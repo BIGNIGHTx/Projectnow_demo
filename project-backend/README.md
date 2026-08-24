@@ -102,7 +102,7 @@ Password hash = `sha256("fontai_<password>_salt")`
 |------|------|------|---------|
 | Login | `/login` | public | username + password → return user, redirect ไป /dashboard |
 | Register | `/register` | public | สมัครสมาชิก (default role = STAFF) |
-| Dashboard | `/dashboard` | ทุก role | KPI Cards, Sentiment, Topic Donut, Keyword Top 10, Brand Volume/Issues, **Agent Performance (ADMIN เท่านั้น)**, Date filter (Day/Month/Year) |
+| Dashboard | `/dashboard` | ทุก role | KPI Cards, Sentiment, Topic Donut, Keyword Top 10, Brand Volume/Issues, **Agent Performance (ADMIN เท่านั้น)**, Date filter (Day/Month/Year/All), **Export Agent Performance (ADMIN เท่านั้น)** |
 | Files | `/files` | ทุก role | รายการไฟล์, search, dropdown filter (Date/Brand/Product), Pagination, auto-refresh ทุก 5s (เมื่อมี PROCESSING), Upload ตรงในหน้านี้, **Select Mode + Batch Delete**, Export menu |
 | Upload | `/upload` | ทุก role | Drag & Drop, File Queue, auto-analyze (60MB limit) |
 | File Detail | `/files/[id]` | ทุก role | Summary Insight (Intent + Keywords + Anomaly), **Key Insight (Deep Customer Insight)** — ความเสี่ยง + ลูกค้าต้องการอะไร + สิ่งที่ควรทำต่อ, Transcription พร้อม Audio Player sync subtitle, Metadata, Warranty list ของลูกค้า (ถ้า match เบอร์), re-Analyze, Delete |
@@ -281,7 +281,7 @@ Inbound:  ...-{customer}-{agent}-Inbound.ext       → numA=phone, numB=agent
 - **Auto-refresh ทุก 5 วินาที** เมื่อมีไฟล์ status = PROCESSING
 - **Upload toast (มุมขวาล่าง)** — ลากไฟล์/กดปุ่ม Upload ในหน้า Files ได้เลย, แสดง progress, auto-clear done items ใน 4 วินาที
 - **Select Mode** — กดปุ่ม Delete (สีแดง) เข้า Select Mode → tick ไฟล์ที่จะลบ → ยืนยันพิมพ์ `Delete`
-- **Export** ผ่าน endpoint `/dashboard/export-calls` และ `/dashboard/export-agents` (xlsx/csv)
+- **Export** ผ่าน endpoint `/dashboard/export-calls` (Call Analysis — กดที่หน้า Files) และ `/dashboard/export-agents` (Agent Performance — กดที่หน้า Dashboard, ADMIN only)
 
 ### หน้า File Detail
 
@@ -349,7 +349,7 @@ $env:GROQ_API_KEYS="gsk_key1,gsk_key2,gsk_key3"
 | Method | URL | หน้าที่ |
 |--------|-----|---------|
 | GET | `/stats` | KPI + Top Intents + Top Keywords + Daily Volume + Agent Performance + Anomalies (call เดียว) |
-| GET | `/insights?period=day\|month\|year&date=...` | ★ Dashboard ใหม่: KPI + sentiment + topics + keywords + brand_volume + brand_issues + agent_performance (filter ตาม period) |
+| GET | `/insights?period=day\|month\|year\|all&date=...` | ★ Dashboard ใหม่: KPI + sentiment + topics + keywords + brand_volume + brand_issues + agent_performance (filter ตาม period; ถ้า `period=all` ไม่ต้องส่ง `date`) |
 | GET | `/insights/available-years` | ปีที่มีข้อมูลใน DB (สำหรับ dropdown) |
 | GET | `/filters` | Brand / Product / Channel สำหรับ dropdown |
 | GET | `/summary?brand=&product=&channel=` | KPIs + filter 3 มิติ |
@@ -358,8 +358,8 @@ $env:GROQ_API_KEYS="gsk_key1,gsk_key2,gsk_key3"
 | GET | `/intent-analysis` | วิเคราะห์ประเภทปัญหา |
 | GET | `/recommendations` | คำแนะนำ AI (rule-based: CSAT/QA/escalation) |
 | GET | `/export?format=xlsx\|csv` | Export legacy (สูตรเก่า) |
-| GET | `/export-calls?format=xlsx\|csv` | ★ Export Call Analysis Report (ทุกสาย + metadata + AI results) |
-| GET | `/export-agents?format=xlsx\|csv` | ★ Export Agent Performance (QA, CSAT, sentiment summary) |
+| GET | `/export-calls?format=xlsx\|csv` | ★ Export Call Analysis Report (ทุกสาย + metadata + AI results) — ปุ่มที่หน้า Files |
+| GET | `/export-agents?format=xlsx\|csv&period=&date=` | ★ Export Agent Performance (QA, CSAT, sentiment summary) — ปุ่มที่หน้า Dashboard, **ADMIN only** |
 
 ### Customers (`/api/v1/customers`)
 
@@ -673,7 +673,7 @@ project-frontend/
 16. **re-Analyze** — กดแล้วเข้าคิว ระบบคืน analysis ล่าสุดเสมอ (`ORDER BY created_at DESC LIMIT 1`)
 17. **Upload limit** — 60MB
 18. **Select Mode + Batch Delete** — ยืนยันพิมพ์ `Delete` (case-sensitive)
-19. **Export** — `/dashboard/export-calls` และ `/dashboard/export-agents` (xlsx ใส่ formula sheet/column width auto)
+19. **Export** — `/dashboard/export-calls` (Call Analysis ทุกสาย, ปุ่มที่หน้า Files), `/dashboard/export-agents` (Agent Performance, ปุ่มที่หน้า Dashboard — **ADMIN only**, ส่ง `period` + `date` ตาม filter ปัจจุบัน) — xlsx มี formula sheet/column width auto
 20. **Customer ↔ Audio match** — ด้วยเบอร์โทร (clean dashes), แสดงปุ่มลิงก์ใน file detail
 21. **Customer Detail รองรับ `phone-xxx` route** — กรณีเบอร์โทรไม่อยู่ใน DB ลูกค้า (สร้าง stub จากเบอร์)
 22. **Proof of Purchase** — เก็บ path ใน DB, serve ผ่าน API (auto-detect media type)
@@ -682,12 +682,12 @@ project-frontend/
 25. **LOGOUT ใช้ sendBeacon** — บันทึก log สำเร็จแม้กำลังเปลี่ยน page
 26. **Audit log** — ทุก action สำคัญใน `admin_activity_logs`, ดูที่ `/admin` (ADMIN only)
 27. **Role-based UI** — Sidebar ซ่อนเมนู Agents + Admin Management สำหรับ non-ADMIN, layout guard redirect ถ้าเข้าตรงๆ
-28. **Dashboard `/insights`** — endpoint ใหม่ที่ filter ตาม Day/Month/Year (เทียบกับ `/stats` ที่เป็น all-time)
+28. **Dashboard `/insights`** — endpoint ใหม่ที่ filter ตาม Day/Month/Year/**All** (เทียบกับ `/stats` ที่เป็น all-time, ไม่มี date filter)
 29. **Auto-poll** — files list ทุก 5s (เฉพาะตอนมี PROCESSING), file detail ทุก 3s จนกว่าจะ analyzed/failed
 30. **Default password** — somchai/somchai123 (ADMIN), somsri/somsri123 (STAFF) ระบบ seed อัตโนมัติถ้ายังไม่มี
 
 ### สิ่งที่ยังไม่ได้ทำ
-- ย้ายจาก SQLite → Supabase (PostgreSQL + pgvector) สำหรับ production
+- ย้ายจาก SQLite →  PostgreSQL สำหรับ production
 - VIEWER role ในปัจจุบันแยกจาก STAFF เฉพาะใน schema CHECK constraint — UI ยังไม่ได้ทำ permission แยกระหว่าง STAFF กับ VIEWER
 - Reset password / forgot password flow
 - File path ใน `proof_of_purchase` เป็น Windows absolute path (`D:\\Omazz\\…`) — ต้องเปลี่ยนเมื่อ deploy บน server อื่น

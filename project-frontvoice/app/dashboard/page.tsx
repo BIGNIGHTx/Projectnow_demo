@@ -375,7 +375,7 @@ export default function DashboardPage() {
               {isAdmin && (
                 <button
                   onClick={handleExport}
-                  className="flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] transition-colors hover:bg-indigo-50 hover:text-indigo-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                  className="flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] transition-colors hover:bg-indigo-50 hover:text-indigo-600 dark:!bg-white dark:!text-slate-900 dark:!border-transparent dark:hover:!bg-slate-100 dark:hover:!text-indigo-600 cursor-pointer"
                 >
                   <Download size={16} strokeWidth={2.4} />
                   Export

@@ -540,6 +540,37 @@ export default function AdminManagementPage() {
 
       // Log activity to backend
       if (user) {
+        const currentPerms = getUserPermissions(selectedTargetUser);
+        const allowedModules: string[] = [];
+        const blockedModules: string[] = [];
+
+        PERMISSION_GROUPS.forEach((group) => {
+          const groupAllowed = group.permissions.filter((p) => currentPerms[p.id]);
+          const groupBlocked = group.permissions.filter((p) => !currentPerms[p.id]);
+          const shortModuleName = group.moduleName.replace(/\s*\([^)]*\)/g, '').trim();
+
+          if (groupAllowed.length > 0) {
+            allowedModules.push(`${shortModuleName} (${groupAllowed.map((p) => p.title).join(', ')})`);
+          }
+          if (groupBlocked.length > 0) {
+            blockedModules.push(`${shortModuleName} (${groupBlocked.map((p) => p.title).join(', ')})`);
+          }
+        });
+
+        const totalPerms = ALL_PERMISSIONS.length;
+        const allowedCount = ALL_PERMISSIONS.filter((p) => currentPerms[p.id]).length;
+
+        const detailLines: string[] = [];
+        detailLines.push(`กำหนดสิทธิ์ให้ ${selectedTargetUser.full_name} (@${selectedTargetUser.username}) [เปิด ${allowedCount}/${totalPerms} สิทธิ์]`);
+        if (allowedModules.length > 0) {
+          detailLines.push(`✅ อนุญาต: ${allowedModules.join(' · ')}`);
+        }
+        if (blockedModules.length > 0) {
+          detailLines.push(`❌ ปิดกั้น: ${blockedModules.join(' · ')}`);
+        }
+
+        const fullDetail = detailLines.join('\n');
+
         await fetch(`${API_BASE}/api/v1/admin/logs`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -551,7 +582,7 @@ export default function AdminManagementPage() {
             target_type: 'user',
             target_id: String(selectedTargetUser.admin_user_id),
             target_label: selectedTargetUser.full_name,
-            detail: `อัปเดตสิทธิ์การใช้งานรายบุคคลสำหรับ ${selectedTargetUser.full_name} (@${selectedTargetUser.username})`,
+            detail: fullDetail,
           }),
         }).catch(() => {});
       }
@@ -579,10 +610,10 @@ export default function AdminManagementPage() {
     : 0;
 
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden">
       <Sidebar />
 
-      <main className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-900 p-4 sm:p-5 lg:p-6 pb-28">
+      <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900 p-4 sm:p-5 lg:p-6 pb-28">
         <div className="mx-auto w-full max-w-[1280px]">
           {/* Header */}
           <div className="mb-6">
@@ -915,7 +946,7 @@ export default function AdminManagementPage() {
                                 <div className="text-[10px] text-slate-400 mt-0.5">{log.target_type}</div>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 max-w-xs">
+                            <td className="px-4 py-3 text-xs text-slate-600 dark:text-slate-300 max-w-md whitespace-pre-line leading-relaxed">
                               {log.detail || '-'}
                             </td>
                             <td className="px-4 py-3 text-[10px] text-slate-400 font-mono">{log.ip_address || '-'}</td>

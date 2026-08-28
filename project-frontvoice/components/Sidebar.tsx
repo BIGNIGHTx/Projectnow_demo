@@ -13,7 +13,7 @@ export default function Sidebar() {
   const isAdmin = user?.role === 'ADMIN';
 
   return (
-    <aside className="w-64 h-screen bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between">
+    <aside className="w-64 h-screen bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between shrink-0 sticky top-0">
       <div>
         <div className="p-6 flex items-center space-x-3">
           <div className="w-10 h-10 bg-blue-700 rounded-xl flex items-center justify-center text-white">

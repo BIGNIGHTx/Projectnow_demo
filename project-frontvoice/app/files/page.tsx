@@ -293,21 +293,20 @@ function FilesPageInner() {
 
   // Handle/API: รับไฟล์ที่ผู้ใช้เลือก ตรวจ format แล้วอัปโหลดเข้า backend ทีละไฟล์ (ถูกเรียกใช้ที่บรรทัด 430)
   const handleFilesSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const fileList = e.target.files; // ไฟล์ทั้งหมดที่ผู้ใช้เลือกจาก input type="file"
-    if (!fileList || fileList.length === 0) return; // ถ้าไม่ได้เลือกไฟล์ ให้หยุดทำงานทันที
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
 
-    // เตรียม array ชั่วคราวไว้เก็บเฉพาะไฟล์ที่ระบบรองรับ ก่อนเอาไปแสดงใน queue และส่ง backend
     const items: { id: string; name: string; size: string; status: 'uploading'; file: File }[] = [];
     for (let i = 0; i < fileList.length; i++) {
-      const file = fileList[i]; // ดึงไฟล์ทีละตัวจากรายการที่เลือก
-      const ext = file.name.split('.').pop()?.toUpperCase() || ''; // หา extension เช่น MP3/WAV เพื่อเช็ก format
-      if (!SUPPORTED_FORMATS.includes(ext)) continue; // ถ้า format ไม่อยู่ในรายการที่รองรับ ให้ข้ามไฟล์นี้
+      const file = fileList[i];
+      const ext = file.name.split('.').pop()?.toUpperCase() || '';
+      if (!SUPPORTED_FORMATS.includes(ext)) continue;
       items.push({
-        id: `${Date.now()}-${i}-${file.name}`, // id ชั่วคราวไว้ match สถานะ upload ของไฟล์นี้ใน UI
-        name: file.name, // ชื่อไฟล์ที่แสดงใน upload toast
-        size: formatSize(file.size), // ขนาดไฟล์แบบอ่านง่าย เช่น KB/MB
-        status: 'uploading', // สถานะเริ่มต้น ตอนเพิ่มเข้าคิวถือว่ากำลังอัปโหลด
-        file, // File object จริงที่ต้องส่งเข้า FormData เพื่อ upload ไป backend
+        id: `${Date.now()}-${i}-${file.name}`,
+        name: file.name,
+        size: formatSize(file.size),
+        status: 'uploading',
+        file,
       });
     }
 
@@ -319,19 +318,11 @@ function FilesPageInner() {
       return;
     }
 
-    // เพิ่มไฟล์ที่ผ่านการตรวจ format เข้า state เพื่อให้ UI แสดงสถานะ upload ทันที
-    setUploadQueue(prev => [...prev, ...items.map(it => ({
-      id: it.id, name: it.name, size: it.size, status: 'uploading' as const,
-    }))]);
-
-    // upload ทีละไฟล์แบบ sequential เพื่อไม่ยิง request พร้อมกันหลายไฟล์จน backend ทำงานหนัก
+    setUploadQueue(prev => [...prev, ...items]);
     for (const item of items) {
       try {
-        const formData = new FormData(); // ใช้ FormData เพราะ backend รับไฟล์แบบ multipart/form-data
-        formData.append('file', item.file); // แนบไฟล์เสียงจริงไปที่ field ชื่อ file
-        formData.append('customer_phone', 'N/A'); // ยังไม่มีเบอร์ลูกค้าจากหน้านี้ จึงส่งค่า placeholder
-        formData.append('agent_id', 'N/A'); // ยังไม่มี agent จากหน้านี้ จึงส่งค่า placeholder
-        if (user?.admin_user_id) formData.append('created_by', String(user.admin_user_id)); // ส่ง id คนอัปโหลดถ้ามีข้อมูล user
+        const formData = new FormData();
+        formData.append('file', item.file);
 
         const res = await fetch(`${API_BASE}/api/v1/audio/upload`, {
           method: 'POST',
@@ -433,7 +424,7 @@ function FilesPageInner() {
                 {/* Upload Button */}
                 <button
                   onClick={handleUploadClick}
-                  className="px-5 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-xl text-sm font-medium flex items-center gap-2 cursor-pointer transition-colors shadow-sm"
+                  className="px-5 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white dark:!bg-white dark:!text-slate-900 dark:hover:!bg-slate-100 rounded-xl text-sm font-bold flex items-center gap-2 cursor-pointer transition-colors shadow-sm"
                 >
                   <Upload size={16} /> Upload
                 </button>

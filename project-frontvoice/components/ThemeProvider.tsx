@@ -49,10 +49,15 @@ export function ThemeToggle() {
   return (
     <button
       onClick={toggle}
-      className="fixed top-4 right-4 z-50 p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all cursor-pointer"
+      className="fixed bottom-5 right-5 2xl:top-4 2xl:right-6 2xl:bottom-auto z-40 p-2.5 sm:p-3 rounded-2xl bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-700/80 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center group"
       title={dark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+      aria-label="Toggle theme"
     >
-      {dark ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} className="text-slate-500" />}
+      {dark ? (
+        <Sun size={18} className="text-amber-400 group-hover:rotate-45 transition-transform duration-300" />
+      ) : (
+        <Moon size={18} className="text-slate-500 dark:text-slate-400 group-hover:-rotate-12 transition-transform duration-300" />
+      )}
     </button>
   );
 }

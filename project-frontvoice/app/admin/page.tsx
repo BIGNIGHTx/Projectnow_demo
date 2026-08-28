@@ -301,6 +301,7 @@ export default function AdminManagementPage() {
 
   // Individual Per-User Permissions State
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [allStaffUsers, setAllStaffUsers] = useState<AdminUser[]>([]);
   const [permSearch, setPermSearch] = useState('');
   const [permissionsByUser, setPermissionsByUser] = useState<Record<number, Record<string, boolean>>>({});
   const [isDirty, setIsDirty] = useState(false);
@@ -312,6 +313,10 @@ export default function AdminManagementPage() {
       const saved = localStorage.getItem('fontai_user_permissions');
       if (saved) {
         setPermissionsByUser(JSON.parse(saved));
+      }
+      const savedUserId = localStorage.getItem('fontai_selected_target_user_id');
+      if (savedUserId) {
+        setSelectedUserId(Number(savedUserId));
       }
     } catch {}
   }, []);
@@ -329,10 +334,14 @@ export default function AdminManagementPage() {
       const fetchedUsers: AdminUser[] = data.users || [];
       setUsers(fetchedUsers);
 
+      const nonAdmins = fetchedUsers.filter((u) => u.role !== 'ADMIN');
+      if (!userSearch && !roleFilter) {
+        setAllStaffUsers(nonAdmins);
+      }
+
       // Auto-select first non-admin user if not yet selected
-      if (selectedUserId === null) {
-        const firstNonAdmin = fetchedUsers.find((u) => u.role !== 'ADMIN');
-        if (firstNonAdmin) setSelectedUserId(firstNonAdmin.admin_user_id);
+      if (selectedUserId === null && nonAdmins.length > 0) {
+        setSelectedUserId(nonAdmins[0].admin_user_id);
       }
     } catch (e) {
       console.error('fetch users error', e);
@@ -451,8 +460,12 @@ export default function AdminManagementPage() {
   }, [tab, fetchLogs, fetchStats]);
 
   // Non-admin users list and currently selected target user
-  const nonAdminUsers = users.filter((u) => u.role !== 'ADMIN');
-  const selectedTargetUser = users.find((u) => u.admin_user_id === selectedUserId) || nonAdminUsers[0];
+  const nonAdminUsers = allStaffUsers.length > 0 
+    ? allStaffUsers 
+    : users.filter((u) => u.role !== 'ADMIN');
+  const selectedTargetUser = nonAdminUsers.find((u) => u.admin_user_id === selectedUserId) 
+    || users.find((u) => u.admin_user_id === selectedUserId) 
+    || nonAdminUsers[0];
 
   // Helper to retrieve permissions for a specific user
   const getUserPermissions = useCallback((targetUser: AdminUser | undefined) => {
@@ -561,7 +574,9 @@ export default function AdminManagementPage() {
   }).filter((group) => group.permissions.length > 0);
 
   // Count active permissions for currently selected user
-  const activeCount = ALL_PERMISSIONS.filter((p) => currentTargetPermissions[p.id]).length;
+  const activeCount = selectedTargetUser
+    ? ALL_PERMISSIONS.filter((p) => currentTargetPermissions[p.id]).length
+    : 0;
 
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -612,14 +627,24 @@ export default function AdminManagementPage() {
                   onClick={() => setTab('permissions')}
                   className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
                     tab === 'permissions'
-                      ? 'bg-violet-600 text-white shadow-sm'
-                      : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                      ? '!bg-violet-600 bg-violet-600 text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
                   }`}
+                  style={{
+                    backgroundColor: tab === 'permissions' ? '#7c3aed' : undefined,
+                    color: tab === 'permissions' ? '#ffffff' : undefined,
+                  }}
                 >
-                  <Sliders size={16} />
-                  ตั้งค่าสิทธิ์รายบุคคล
+                  <Sliders size={16} className={tab === 'permissions' ? 'text-white' : 'text-violet-500'} />
+                  <span>ตั้งค่าสิทธิ์รายบุคคล</span>
                   {selectedTargetUser && (
-                    <span className="text-[11px] bg-white/20 text-white font-normal px-2 py-0.5 rounded-full ml-1 truncate max-w-[120px]">
+                    <span
+                      className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full ml-1 truncate max-w-[140px] transition-colors ${
+                        tab === 'permissions'
+                          ? 'bg-white/20 text-white'
+                          : 'bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300 border border-violet-200 dark:border-violet-800'
+                      }`}
+                    >
                       {selectedTargetUser.full_name}
                     </span>
                   )}
@@ -790,41 +815,6 @@ export default function AdminManagementPage() {
           {/* === Tab: Logs === */}
           {tab === 'logs' && (
             <div className="space-y-4">
-              {stats && (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-sm">
-                    <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 uppercase font-semibold mb-2">
-                      <Activity size={13} /> Total Logs
-                    </div>
-                    <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">{stats.total_logs.toLocaleString()}</div>
-                  </div>
-                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-sm">
-                    <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 uppercase font-semibold mb-2">
-                      <Clock size={13} /> Last 7 Days
-                    </div>
-                    <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">{stats.logs_last_7_days.toLocaleString()}</div>
-                  </div>
-                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-sm">
-                    <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 uppercase font-semibold mb-2">
-                      <UserCog size={13} /> Top Action
-                    </div>
-                    <div className="text-base font-bold text-slate-800 dark:text-slate-100 truncate">
-                      {stats.top_actions[0]?.action || '-'}
-                    </div>
-                    <div className="text-xs text-slate-400">{stats.top_actions[0]?.c || 0} times</div>
-                  </div>
-                  <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-sm">
-                    <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 uppercase font-semibold mb-2">
-                      <UsersIcon size={13} /> Most Active
-                    </div>
-                    <div className="text-base font-bold text-slate-800 dark:text-slate-100 truncate">
-                      {stats.top_actors[0]?.actor_username || '-'}
-                    </div>
-                    <div className="text-xs text-slate-400">{stats.top_actors[0]?.c || 0} actions</div>
-                  </div>
-                </div>
-              )}
-
               <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-sm">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                   <div className="relative lg:col-span-2">
@@ -1030,7 +1020,7 @@ export default function AdminManagementPage() {
                     </span>
                     <button
                       onClick={() => handleToggleAll(true)}
-                      className="px-2.5 py-1 font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-md hover:bg-emerald-100 cursor-pointer transition-colors"
+                      className="px-2.5 py-1 font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-md hover:bg-emerald-100 dark:hover:bg-emerald-900/50 cursor-pointer transition-colors"
                     >
                       เปิดทั้งหมด
                     </button>
@@ -1118,19 +1108,23 @@ export default function AdminManagementPage() {
                                     onClick={() => handleTogglePermission(p.id)}
                                     className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                                       isEnabled
-                                        ? 'bg-indigo-600'
-                                        : 'bg-slate-300 dark:bg-slate-600'
+                                        ? '!bg-indigo-600'
+                                        : '!bg-slate-300 dark:!bg-slate-600'
                                     }`}
+                                    style={{
+                                      backgroundColor: isEnabled ? '#4f46e5' : undefined,
+                                    }}
                                     role="switch"
                                     aria-checked={isEnabled}
                                   >
                                     <span
-                                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out flex items-center justify-center text-[10px] ${
-                                        isEnabled ? 'translate-x-5 text-indigo-600' : 'translate-x-0 text-slate-400'
+                                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full shadow ring-0 transition duration-200 ease-in-out ${
+                                        isEnabled ? 'translate-x-5' : 'translate-x-0'
                                       }`}
-                                    >
-                                      {isEnabled ? <Check size={11} strokeWidth={3} /> : <X size={9} />}
-                                    </span>
+                                      style={{
+                                        backgroundColor: '#ffffff',
+                                      }}
+                                    />
                                   </button>
                                 </div>
                               </div>

@@ -11,15 +11,31 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const saved = localStorage.getItem('theme');
-    if (saved === 'dark') setDark(true);
+    if (saved === 'dark') {
+      setDark(true);
+      document.documentElement.classList.add('dark');
+    }
   }, []);
 
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', dark);
-    localStorage.setItem('theme', dark ? 'dark' : 'light');
-  }, [dark]);
+  const toggle = () => {
+    document.documentElement.classList.add('disable-transitions');
+    setDark(prev => {
+      const next = !prev;
+      document.documentElement.classList.toggle('dark', next);
+      localStorage.setItem('theme', next ? 'dark' : 'light');
+      return next;
+    });
 
-  const toggle = () => setDark(d => !d);
+    // Force layout reflow
+    window.getComputedStyle(document.documentElement).opacity;
+
+    // Re-enable transitions on next frames
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.documentElement.classList.remove('disable-transitions');
+      });
+    });
+  };
 
   return (
     <ThemeContext.Provider value={{ dark, toggle }}>

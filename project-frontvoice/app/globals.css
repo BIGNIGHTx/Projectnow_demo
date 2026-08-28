@@ -23,8 +23,15 @@ select {
   font-family: var(--font-main);
 }
 
-body {
-  transition: background-color 0.2s, color 0.2s;
+.disable-transitions,
+.disable-transitions *,
+.disable-transitions *::before,
+.disable-transitions *::after {
+  -webkit-transition: none !important;
+  -moz-transition: none !important;
+  -o-transition: none !important;
+  -ms-transition: none !important;
+  transition: none !important;
 }
 
 button:not(:disabled),
@@ -175,7 +182,7 @@ button:disabled,
   color-scheme: dark;
 }
 
-.dark main button:not(.agent-table-sort-button):not(.transcript-audio-button):not([class*="bg-blue-"]):not([class*="bg-red-"]):not([class*="bg-rose-"]):not([class*="bg-emerald-"]):not([class*="bg-green-"]):not([class*="bg-orange-"]):not([class*="bg-amber-"]):not([class*="bg-indigo-50"]):not([class*="bg-blue-50"]):not([class*="bg-emerald-50"]):not([class*="px-1.5"]):not([class*="bg-white"][class*="text-orange-"]):not([class*="bg-white"][class*="text-blue-"]),
+.dark main button:not(.agent-table-sort-button):not(.transcript-audio-button):not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-violet-"]):not([class*="bg-purple-"]):not([class*="bg-red-"]):not([class*="bg-rose-"]):not([class*="bg-emerald-"]):not([class*="bg-green-"]):not([class*="bg-orange-"]):not([class*="bg-amber-"]):not([class*="bg-indigo-50"]):not([class*="bg-blue-50"]):not([class*="px-1.5"]):not([class*="bg-white"][class*="text-orange-"]):not([class*="bg-white"][class*="text-blue-"]),
 .dark main label[class*="cursor-pointer"],
 .dark main a[class*="border"][class*="bg-white"] {
   background-color: #151515 !important;
@@ -184,7 +191,7 @@ button:disabled,
   box-shadow: none !important;
 }
 
-.dark main button:not(.agent-table-sort-button):not(.transcript-audio-button):not([class*="bg-blue-"]):not([class*="bg-red-"]):not([class*="bg-rose-"]):not([class*="bg-emerald-"]):not([class*="bg-green-"]):not([class*="bg-orange-"]):not([class*="bg-amber-"]):not([class*="bg-indigo-50"]):not([class*="bg-blue-50"]):not([class*="bg-emerald-50"]):not([class*="px-1.5"]):not([class*="bg-white"][class*="text-orange-"]):not([class*="bg-white"][class*="text-blue-"]):hover,
+.dark main button:not(.agent-table-sort-button):not(.transcript-audio-button):not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-violet-"]):not([class*="bg-purple-"]):not([class*="bg-red-"]):not([class*="bg-rose-"]):not([class*="bg-emerald-"]):not([class*="bg-green-"]):not([class*="bg-orange-"]):not([class*="bg-amber-"]):not([class*="bg-indigo-50"]):not([class*="bg-blue-50"]):not([class*="px-1.5"]):not([class*="bg-white"][class*="text-orange-"]):not([class*="bg-white"][class*="text-blue-"]):hover,
 .dark main label[class*="cursor-pointer"]:hover,
 .dark main a[class*="border"][class*="bg-white"]:hover {
   background-color: #1f1f1f !important;
@@ -192,7 +199,7 @@ button:disabled,
   color: #ffffff !important;
 }
 
-.dark main button:not(.agent-table-sort-button):not(.transcript-audio-button):not([class*="bg-blue-"]):not([class*="bg-red-"]):not([class*="bg-rose-"]):not([class*="bg-emerald-"]):not([class*="bg-green-"]):not([class*="bg-orange-"]):not([class*="bg-amber-"]):not([class*="bg-indigo-50"]):not([class*="bg-blue-50"]):not([class*="bg-emerald-50"]):not([class*="px-1.5"]):not([class*="bg-white"][class*="text-orange-"]):not([class*="bg-white"][class*="text-blue-"]) *,
+.dark main button:not(.agent-table-sort-button):not(.transcript-audio-button):not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-violet-"]):not([class*="bg-purple-"]):not([class*="bg-red-"]):not([class*="bg-rose-"]):not([class*="bg-emerald-"]):not([class*="bg-green-"]):not([class*="bg-orange-"]):not([class*="bg-amber-"]):not([class*="bg-indigo-50"]):not([class*="bg-blue-50"]):not([class*="px-1.5"]):not([class*="bg-white"][class*="text-orange-"]):not([class*="bg-white"][class*="text-blue-"]) *,
 .dark main label[class*="cursor-pointer"] *,
 .dark main a[class*="border"][class*="bg-white"] * {
   color: inherit !important;
@@ -200,7 +207,6 @@ button:disabled,
 
 .dark main button[class*="bg-indigo-50"],
 .dark main button[class*="bg-blue-50"],
-.dark main button[class*="bg-emerald-50"],
 .dark main button[class*="bg-white"][class*="text-orange-"],
 .dark main button[class*="bg-white"][class*="text-blue-"] {
   background-color: #ffffff !important;
@@ -210,7 +216,6 @@ button:disabled,
 
 .dark main button[class*="bg-indigo-50"] *,
 .dark main button[class*="bg-blue-50"] *,
-.dark main button[class*="bg-emerald-50"] *,
 .dark main button[class*="bg-white"][class*="text-orange-"] *,
 .dark main button[class*="bg-white"][class*="text-blue-"] * {
   color: inherit !important;

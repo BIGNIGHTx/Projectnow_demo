@@ -1,7 +1,8 @@
 'use client';
 
 import Sidebar from '@/components/Sidebar';
-import { ArrowLeft, User, MapPin, FileImage, MessageSquare } from 'lucide-react';
+import PageHeader from '@/components/PageHeader';
+import { ArrowLeft, User, MapPin, FileImage, MessageSquare, ShieldCheck } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 
@@ -185,13 +186,13 @@ export default function WarrantyDetailPage() {
           <div className="relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-6 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)]"> {/* Header card: สรุปสินค้า serial และสถานะ warranty */}
             <div className="pointer-events-none absolute -right-16 -top-20 h-44 w-44 rounded-full bg-indigo-50 blur-2xl" />
             <div className="relative z-10 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-4">
-                <div className="h-16 w-16 shrink-0 rounded-[1.25rem] bg-white bg-cover bg-center shadow-sm ring-1 ring-amber-100" style={WARRANTY_ICON_STYLE} />
-                <div>
-                  <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.22em] text-[#818CF8]">Warranty Detail</p>
-                  <h1 className="text-xl font-bold tracking-tight text-[#0F172A]">#{w.registration_no}</h1>
-                </div>
-              </div>
+              <PageHeader
+                eyebrow="Warranty Detail"
+                title={`#${w.registration_no}`}
+                description="รายละเอียดการรับประกันสินค้า"
+                icon={ShieldCheck}
+                tone="light"
+              />
               <div className="flex flex-wrap items-center gap-2">
                 <span className={`rounded-full px-3 py-1 text-xs font-bold ${
                   w.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100' :

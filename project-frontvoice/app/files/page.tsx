@@ -1,6 +1,7 @@
 'use client';
 
 import Sidebar from '@/components/Sidebar';
+import PageHeader from '@/components/PageHeader';
 import { useAuth } from '@/components/AuthProvider';
 import { Search, RotateCw, Calendar, Tag, CheckCircle2, RefreshCw, FileAudio, Package, AlertCircle, ChevronDown, X, Trash2, CheckSquare, Square, Download, Upload, Loader2 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -363,51 +364,13 @@ function FilesPageInner() {
       <main className="page-bg-dark flex-1 overflow-auto bg-slate-50 p-4 sm:p-5 lg:p-6"> {/* พื้นที่ scroll ของรายการไฟล์ */}
         <div className="mx-auto w-full"> {/* container ครอบ header, filter, table, modal และ toast */}
           <div className="mb-8 flex flex-col justify-between gap-6 lg:flex-row lg:items-end border-b border-slate-200/60 pb-6"> {/* Header หน้า Files และปุ่ม upload/select mode */}
-            <div className="relative">
-              {/* Decorative Frame */}
-              <div className="absolute left-0 top-1 bottom-[34px] w-px bg-gradient-to-b from-blue-400 to-transparent opacity-60"></div>
-              {/* 4-Point Star top-left */}
-              <svg className="absolute -left-[5.5px] top-0 w-3 h-3 text-blue-500 opacity-80" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 0C12 0 12 10.5 24 12C24 12 12 13.5 12 24C12 24 12 13.5 0 12C0 12 12 10.5 12 0Z" />
-              </svg>
-              {/* Dot and horizontal line bottom-left */}
-              <div className="absolute left-0 bottom-8 w-1.5 h-1.5 rounded-full bg-blue-500 -ml-[2px] opacity-80"></div>
-              <div className="absolute left-1.5 bottom-[34.5px] right-24 h-px bg-gradient-to-r from-blue-400 via-blue-200 to-transparent opacity-60"></div>
-              
-              {/* Right Decorative Graphics (Swirls) */}
-              <svg className="absolute -right-4 top-0 w-32 h-24 text-blue-300 pointer-events-none opacity-40 mix-blend-multiply hidden sm:block" viewBox="0 0 200 100" fill="none" stroke="currentColor">
-                <path d="M150,80 Q100,80 120,40 T180,20" strokeWidth="0.5" fill="none"/>
-                <path d="M130,90 Q80,90 90,50 T160,10" strokeWidth="0.5" fill="none"/>
-                <path d="M160,70 C130,50 180,30 190,50 C200,70 170,90 140,80" strokeWidth="0.5" fill="none"/>
-                <path d="M140,65 C140,65 140,75 145,75 C145,75 140,75 140,85 C140,85 140,75 135,75 C135,75 140,75 140,65Z" fill="#2563EB" stroke="none"/>
-                <circle cx="160" cy="25" r="1.5" fill="currentColor"/>
-                <circle cx="150" cy="15" r="1" fill="currentColor"/>
-                <circle cx="185" cy="85" r="1.5" fill="currentColor"/>
-              </svg>
-
-              <div className="pl-6 pt-8 pb-4 relative z-10">
-                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                  <h1 className="text-[24px] sm:text-[28px] md:text-[32px] font-black tracking-tight text-[#2563EB] leading-none">Files</h1>
-                  <h1 className="text-[24px] sm:text-[28px] md:text-[32px] font-black tracking-tight text-[#0F172A] leading-none">Library</h1>
-                  <span 
-                    className="text-[24px] sm:text-[28px] md:text-[32px] font-black tracking-tight leading-none ml-1 sm:ml-1.5" 
-                    style={{ 
-                      background: 'linear-gradient(to right, #0F172A, #2563EB, #60A5FA)', 
-                      WebkitBackgroundClip: 'text', 
-                      WebkitTextFillColor: 'transparent',
-                    }}
-                  >
-                    Storage
-                  </span>
-                </div>
-
-                <div className="mt-10 flex flex-wrap items-center gap-x-3 gap-y-2 text-[10px] sm:text-xs font-bold tracking-[0.2em] text-[#2563EB] uppercase">
-                  <span>AUDIO ASSETS MANAGEMENT</span>
-                  <span className="text-blue-200">|</span>
-                  <span>{(total || 0).toLocaleString()} RECORDINGS</span>
-                </div>
-              </div>
-            </div>
+            <PageHeader
+              eyebrow="Audio Assets Management"
+              title="Files Library"
+              description={`ไฟล์เสียงทั้งหมด ${(total || 0).toLocaleString()} รายการ`}
+              icon={FileAudio}
+              accentColor="#2563EB"
+            />
 
             {!selectMode ? (
               <div className="flex items-center gap-3 mr-12">

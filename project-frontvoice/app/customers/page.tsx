@@ -1,6 +1,7 @@
 'use client';
 
 import Sidebar from '@/components/Sidebar';
+import PageHeader from '@/components/PageHeader';
 import { ChevronRight, Mail, Phone, RotateCw, Search, UserCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -85,46 +86,13 @@ export default function CustomersPage() {
       <main className="page-bg-dark flex-1 overflow-auto bg-slate-50 p-4 sm:p-5 lg:p-6"> {/* พื้นที่ scroll ของหน้าลูกค้า */}
         <div className="mx-auto w-full"> {/* container รวม header, search และตารางลูกค้า */}
           <div className="mb-8 flex flex-col justify-between gap-6 lg:flex-row lg:items-end"> {/* Header: ชื่อหน้าและจำนวนลูกค้า */}
-            <div className="relative">
-              <div className="absolute left-0 top-1 bottom-[34px] w-px bg-gradient-to-b from-emerald-400 to-transparent opacity-60" />
-              <svg className="absolute -left-[5.5px] top-0 h-3 w-3 text-emerald-500 opacity-80" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 0C12 0 12 10.5 24 12C24 12 12 13.5 12 24C12 24 12 13.5 0 12C0 12 12 10.5 12 0Z" />
-              </svg>
-              <div className="absolute -ml-[2px] bottom-8 left-0 h-1.5 w-1.5 rounded-full bg-emerald-500 opacity-80" />
-              <div className="absolute bottom-[34.5px] left-1.5 right-24 h-px bg-gradient-to-r from-emerald-400 via-emerald-200 to-transparent opacity-60" />
-              <svg className="pointer-events-none absolute -right-4 top-0 hidden h-24 w-32 text-emerald-300 opacity-40 mix-blend-multiply sm:block" viewBox="0 0 200 100" fill="none" stroke="currentColor">
-                <path d="M150,80 Q100,80 120,40 T180,20" strokeWidth="0.5" fill="none" />
-                <path d="M130,90 Q80,90 90,50 T160,10" strokeWidth="0.5" fill="none" />
-                <path d="M160,70 C130,50 180,30 190,50 C200,70 170,90 140,80" strokeWidth="0.5" fill="none" />
-                <path d="M140,65 C140,65 140,75 145,75 C145,75 140,75 140,85 C140,85 140,75 135,75 C135,75 140,75 140,65Z" fill="#10B981" stroke="none" />
-                <circle cx="160" cy="25" r="1.5" fill="currentColor" />
-                <circle cx="150" cy="15" r="1" fill="currentColor" />
-                <circle cx="185" cy="85" r="1.5" fill="currentColor" />
-              </svg>
-
-              <div className="relative z-10 pb-4 pl-6 pt-8">
-                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                  <h1 className="text-[24px] font-black leading-none tracking-tight text-[#10B981] sm:text-[28px] md:text-[32px]">Customer</h1>
-                  <h1 className="text-[24px] font-black leading-none tracking-tight text-[#0F172A] sm:text-[28px] md:text-[32px]">Library</h1>
-                  <span
-                    className="ml-1 text-[24px] font-black leading-none tracking-tight sm:ml-1.5 sm:text-[28px] md:text-[32px]"
-                    style={{
-                      background: 'linear-gradient(to right, #0F172A, #10B981, #34D399)',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                    }}
-                  >
-                    Database
-                  </span>
-                </div>
-
-                <div className="mt-10 flex flex-wrap items-center gap-x-3 gap-y-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#10B981] sm:text-xs">
-                  <span>CRM SYSTEM</span>
-                  <span className="text-emerald-200">|</span>
-                  <span>{total.toLocaleString()} CLIENTS FOUND</span>
-                </div>
-              </div>
-            </div>
+            <PageHeader
+              eyebrow="CRM System"
+              title="Customer Library"
+              description={`รายชื่อลูกค้าทั้งหมด ${total.toLocaleString()} รายการ`}
+              icon={UserCircle}
+              accentColor="#10B981"
+            />
           </div>
 
           <form onSubmit={handleSearch} className="mb-6 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"> {/* Search form: ค้นหาลูกค้าจากชื่อ/เบอร์/อีเมล */}

@@ -1,6 +1,7 @@
 'use client';
 
 import Sidebar from '@/components/Sidebar';
+import PageHeader from '@/components/PageHeader';
 import { Search, RotateCw, UserRound, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw, Phone } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
@@ -106,20 +107,12 @@ export default function AgentsPage() {
       <main className="flex-1 overflow-auto p-6"> {/* พื้นที่ scroll ของหน้า agents */}
         <div className="mx-auto max-w-full space-y-6"> {/* container รวม header, filter และ table */}
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"> {/* Header: ชื่อหน้าและจำนวน agent */}
-            <div className="relative pl-6">
-              <div className="absolute left-0 top-1 bottom-1 w-px bg-gradient-to-b from-indigo-400 to-transparent opacity-60" />
-              <svg className="absolute -left-[5.5px] top-0 h-3 w-3 text-indigo-500 opacity-80" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 0C12 0 12 10.5 24 12C24 12 12 13.5 12 24C12 24 12 13.5 0 12C0 12 12 10.5 12 0Z" />
-              </svg>
-              <div className="mb-2 flex items-center gap-2 text-lg font-semibold text-slate-800">
-                <UserRound size={18} strokeWidth={2.4} />
-                Agent Performance
-              </div>
-              <h1 className="text-[28px] font-black leading-none tracking-tight text-[#0F172A] sm:text-[32px]">
-                Agents
-              </h1>
-              <p className="mt-2 text-sm font-medium text-slate-500">ข้อมูล Agent และคุณภาพการสนทนาที่วิเคราะห์แล้ว</p>
-            </div>
+            <PageHeader
+              eyebrow="Agent Performance"
+              title="Agents"
+              description="ข้อมูล Agent และคุณภาพการสนทนาที่วิเคราะห์แล้ว"
+              icon={UserRound}
+            />
 
             <div className="agent-count-pill inline-flex w-fit items-center gap-2 rounded-xl border border-indigo-100 bg-white px-4 py-2 text-xs font-bold text-indigo-700 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)]">
               <span className="h-2 w-2 rounded-full bg-emerald-400" />

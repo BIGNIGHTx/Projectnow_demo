@@ -1,6 +1,7 @@
 'use client';
 
 import Sidebar from '@/components/Sidebar';
+import PageHeader from '@/components/PageHeader';
 import {
   ArrowLeft,
   Bell,
@@ -331,7 +332,15 @@ export default function CustomerDetailPage() {
                   <div className="flex-1 space-y-4">
                     <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                       <div>
-                        <h2 className="mb-1 text-2xl font-bold text-slate-800">{customer.first_name} {customer.last_name}</h2>
+                        <PageHeader
+                          eyebrow="Customer Detail"
+                          title={`${customer.first_name} ${customer.last_name}`}
+                          description="ข้อมูลลูกค้าและประวัติการติดต่อ"
+                          icon={User}
+                          accentColor="#10B981"
+                          className="mb-3"
+                          tone="light"
+                        />
                         {hasWarranty && (
                           <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
                             <CheckCircle2 size={14} /> WARRANTY: มีประกัน {warranties.length}

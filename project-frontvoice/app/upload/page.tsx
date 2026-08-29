@@ -1,6 +1,7 @@
 'use client';
 
 import Sidebar from '@/components/Sidebar';
+import PageHeader from '@/components/PageHeader';
 import { useAuth } from '@/components/AuthProvider';
 import { FileUp, Music, X, ArrowRight, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { useState, useRef, DragEvent } from 'react';
@@ -137,7 +138,14 @@ export default function UploadPage() {
     <div className="flex h-screen bg-white dark:bg-slate-900 overflow-hidden"> {/* Layout หลักหน้า Upload: sidebar + upload workspace */}
       {/* Sidebar เมนูนำทาง */}<Sidebar />
       <main className="flex-1 p-8 overflow-auto"> {/* พื้นที่ทำงานสำหรับเลือกไฟล์และจัดคิว upload */}
-        <h1 className="text-3xl font-semibold text-slate-800 dark:text-slate-100 mb-8">Upload File</h1>
+        <PageHeader
+          eyebrow="Audio Upload"
+          title="Upload File"
+          description="อัปโหลดไฟล์เสียงเข้าสู่ระบบ"
+          icon={FileUp}
+          accentColor="#2563EB"
+          className="mb-8"
+        />
 
         <div className="flex gap-8"> {/* แบ่งหน้าจอเป็น drop zone ซ้าย และ queue ขวา */}
           {/* Upload Area: พื้นที่รับไฟล์จาก drag/drop หรือคลิกเลือกไฟล์ */}

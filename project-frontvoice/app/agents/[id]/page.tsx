@@ -1,6 +1,7 @@
 'use client';
 
 import Sidebar from '@/components/Sidebar';
+import PageHeader from '@/components/PageHeader';
 import {
   ArrowLeft, Headphones, Phone, FileAudio, CheckCircle2, RefreshCw,
   AlertCircle, Loader2, Hash, TrendingUp, MessageCircle, Clock
@@ -195,7 +196,14 @@ export default function AgentDetailPage() {
               <div className="flex-1 space-y-4">
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div>
-                    <h2 className="mb-1 text-2xl font-bold text-slate-800">{agent.full_name}</h2>
+                    <PageHeader
+                      eyebrow="Agent Performance"
+                      title={agent.full_name}
+                      description="ข้อมูล Agent และประวัติสายที่เกี่ยวข้อง"
+                      icon={Headphones}
+                      className="mb-3"
+                      tone="light"
+                    />
                     <div className="flex flex-wrap items-center gap-2 mt-2 text-sm text-slate-500">
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-3 py-1 font-mono text-xs font-bold text-slate-600 ring-1 ring-slate-100">
                         <Hash size={13} className="text-slate-400" />

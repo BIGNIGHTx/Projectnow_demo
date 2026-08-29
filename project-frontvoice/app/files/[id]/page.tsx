@@ -1,6 +1,7 @@
 'use client';
 
 import Sidebar from '@/components/Sidebar';
+import PageHeader from '@/components/PageHeader';
 import { useAuth } from '@/components/AuthProvider';
 import { AudioWaveform, Sparkles, MessageCircle, Info, Lightbulb, RefreshCw, Trash2, ArrowLeft, Play, Pause, AlertCircle, Loader2, SkipBack, SkipForward, ExternalLink, Tag, ShieldCheck } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
@@ -355,14 +356,13 @@ export default function FileAnalysisDetail() {
                 <ArrowLeft size={18} className="mr-1.5 group-hover:-translate-x-1 transition-transform" />
                 <span className="text-[13px] font-bold">Back to Files</span>
               </button>
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-800 dark:text-slate-100">
-                  <AudioWaveform size={24} />
-                </div>
-                <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight truncate max-w-[500px]">
-                  {fileData?.original_filename || 'Unknown File'}
-                </h1>
-              </div>
+              <PageHeader
+                eyebrow="Audio File Detail"
+                title={fileData?.original_filename || 'Unknown File'}
+                description="รายละเอียดไฟล์เสียงและผลวิเคราะห์ AI"
+                icon={AudioWaveform}
+                accentColor="#2563EB"
+              />
             </div>
 
             <div className="flex items-center space-x-2.5">

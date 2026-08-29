@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Sidebar from '@/components/Sidebar';
+import PageHeader from '@/components/PageHeader';
 import { useAuth } from '@/components/AuthProvider';
 import {
   ShieldAlert, Users as UsersIcon, ScrollText, Search,
@@ -726,16 +727,14 @@ export default function AdminManagementPage() {
       <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-900 p-4 sm:p-5 lg:p-6 pb-28">
         <div className="mx-auto w-full max-w-[1280px]">
           {/* Header */}
-          <div className="mb-6">
-            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-              <h1 className="text-[24px] sm:text-[28px] md:text-[32px] font-black tracking-tight text-[#4F46E5] dark:text-violet-400 leading-none">Admin</h1>
-              <h1 className="text-[24px] sm:text-[28px] md:text-[32px] font-black tracking-tight text-[#0F172A] dark:text-slate-100 leading-none">Management</h1>
-            </div>
-            <div className="mt-2 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">
-              <ShieldAlert size={14} className="text-violet-500" />
-              <span>User roles · Activity logs · User permissions</span>
-            </div>
-          </div>
+          <PageHeader
+            eyebrow="User Roles · Activity Logs · User Permissions"
+            title="Admin Management"
+            description="จัดการผู้ใช้ สิทธิ์ และประวัติการใช้งานระบบ"
+            icon={ShieldAlert}
+            accentColor="#4F46E5"
+            className="mb-6"
+          />
 
           {/* Main Tab Switcher */}
           <div className="flex w-full max-w-full items-center justify-between gap-2 overflow-x-auto p-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl mb-6 shadow-sm">

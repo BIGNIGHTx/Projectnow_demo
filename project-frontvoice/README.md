@@ -41,7 +41,7 @@ Frontend (Next.js 16 + React 19 + Tailwind 4)
 Backend (FastAPI + Python)
   │
   ├── Groq Whisper large-v3  → ถอดเสียงเป็นข้อความ
-  ├── Groq Llama 3.3 70B     → แก้ transcript + วิเคราะห์ + สรุป
+  ├── Groq GPT-OSS 120B      → แก้ transcript + วิเคราะห์ + สรุป
   ├── SQLite (fontai.db)      → เก็บข้อมูลถาวร (ไม่หายเมื่อ restart)
   └── Local Storage           → เก็บไฟล์เสียง (storage/uploads/)
 ```
@@ -161,7 +161,7 @@ User อัปโหลดไฟล์เสียง (.wav/.mp3 ฯลฯ)
                         │
                         ▼
         ┌───────────────────────────────┐
-        │  Groq Llama 3.3 70B          │
+        │  Groq GPT-OSS 120B           │
         │  (รวม 2 งานใน call เดียว)      │
         │  1. แก้ transcript ให้ถูกต้อง  │
         │  2. วิเคราะห์ + สรุปบทสนทนา   │
@@ -179,9 +179,9 @@ User อัปโหลดไฟล์เสียง (.wav/.mp3 ฯลฯ)
 
 ## ฟีเจอร์หลัก
 
-### AI Pipeline (Whisper + Llama)
+### AI Pipeline (Whisper + GPT-OSS)
 - **Whisper large-v3** — ถอดเสียงภาษาไทย/อังกฤษ, temperature 0.0 (deterministic)
-- **Llama 3.3 70B** — แก้คำผิด + แก้ชื่อแบรนด์/สินค้าเป็นอังกฤษ + วิเคราะห์รวมใน call เดียว:
+- **GPT-OSS 120B** — แก้คำผิด + แก้ชื่อแบรนด์/สินค้าเป็นอังกฤษ + วิเคราะห์บทสนทนา:
   - Conversation Summary (4 จุดสรุป)
   - Sentiment (positive / neutral / negative)
   - Intent (สอบถามสินค้า, แจ้งชำรุด, สอบถามจัดส่ง ฯลฯ)
@@ -273,7 +273,7 @@ project-backend/
 │   ├── customers.py                 # ★ Customer list+search, Detail, Warranty detail+list, Proof serve
 │   └── auth.py                      # ★ Authentication (login, register)
 ├── services/
-│   ├── groq_ai_service.py           # ★ Groq AI Pipeline (Whisper+Llama) + Typhoon Pipeline
+│   ├── groq_ai_service.py           # ★ Groq AI Pipeline (Whisper+GPT-OSS) + Typhoon Pipeline
 │   ├── typhoon_service.py           # ★ Typhoon ASR (Speech-to-Text ภาษาไทย)
 │   ├── diarization_service.py       # ★ pyannote Speaker Diarization (แยก Agent/Customer)
 │   ├── ai_mock_service.py           # Mock AI Pipeline (fallback)
@@ -408,7 +408,7 @@ Backend รองรับการอ่านค่าจากไฟล์ `p
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `GROQ_API_KEY` | ✅ | Groq API Key หลัก (Llama analysis) |
+| `GROQ_API_KEY` | ✅ | Groq API Key หลัก (GPT-OSS analysis) |
 | `GROQ_API_KEY_2` ... `_20` | Optional | Key เพิ่มเติม (สลับ round-robin) |
 | `GROQ_API_KEYS` | Optional | หลาย key คั่นด้วย comma |
 | `TYPHOON_API_KEY` | ★ แนะนำ | Typhoon ASR API Key (ถ้าไม่มี → fallback ไป Groq Whisper) |
@@ -454,17 +454,17 @@ python -c "import torch; print(f'CUDA: {torch.cuda.is_available()}, GPU: {torch.
 | `typhoon-asr-realtime` | Typhoon API (Cloud) | Speech-to-Text | ★ ภาษาไทยแม่น, สร้างมาเพื่อไทยโดยเฉพาะ |
 | `pyannote/speaker-diarization-3.1` | Local (GPU) | Speaker Diarization | ★ แยก Agent/Customer จากเสียง |
 | `whisper-large-v3` | Groq (Cloud) | Speech-to-Text | Fallback ถ้าไม่มี Typhoon API Key |
-| `llama-3.3-70b-versatile` | Groq (Cloud) | NLP Analysis | แก้ transcript + วิเคราะห์ |
+| `openai/gpt-oss-120b` | Groq (Cloud) | NLP Analysis | แก้ transcript + วิเคราะห์ |
 
 ### AI Pipeline Flow
 
 ```
 มี TYPHOON_API_KEY:
-  Audio → Typhoon STT → pyannote (แยกผู้พูด) → Groq Llama (วิเคราะห์)
+  Audio → Typhoon STT → pyannote (แยกผู้พูด) → Groq GPT-OSS (วิเคราะห์)
   ผลลัพธ์: "[00:00] Agent: สวัสดีครับ\n[00:03] Customer: สอบถามค่ะ"
 
 ไม่มี TYPHOON_API_KEY (fallback):
-  Audio → Groq Whisper → Groq Llama (วิเคราะห์)
+  Audio → Groq Whisper → Groq GPT-OSS (วิเคราะห์)
   ผลลัพธ์: "สวัสดีครับ สอบถามค่ะ" (ไม่แยกผู้พูด)
 ```
 
@@ -475,10 +475,10 @@ python -c "import torch; print(f'CUDA: {torch.cuda.is_available()}, GPU: {torch.
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `WHISPER_MODEL` | `whisper-large-v3` | Groq Whisper model |
-| `LLAMA_MODEL` | `llama-3.3-70b-versatile` | Groq Llama model |
+| `ANALYSIS_MODEL` | `openai/gpt-oss-120b` | Groq GPT-OSS model |
 | `WHISPER_MAX_FILE_SIZE_MB` | 24 | chunk ถ้าเกินขนาดนี้ |
 | `CHUNK_DURATION_SECONDS` | 300 | ตัดทุกกี่วินาที (300 = 5 นาที) |
-| `DELAY_BETWEEN_STEPS` | 1 | พักระหว่าง Whisper → Llama (วินาที) |
+| `DELAY_BETWEEN_STEPS` | 1 | พักระหว่าง Whisper → GPT-OSS (วินาที) |
 | `_WHISPER_HALLUCINATIONS` | ~80 คำ | คำที่ Whisper มักถอดผิด (เพิ่มได้) |
 
 ---
@@ -534,7 +534,7 @@ Official Store, Online, Department Store, Dealer
 | Backend | FastAPI, Python 3.12+, Uvicorn |
 | AI (STT) | Typhoon ASR API (ภาษาไทย) / Groq Whisper (fallback) |
 | AI (Diarization) | pyannote/speaker-diarization-3.1 (Local GPU) |
-| AI (Analysis) | Groq Llama 3.3 70B (แก้ transcript + วิเคราะห์) |
+| AI (Analysis) | Groq GPT-OSS 120B (แก้ transcript + วิเคราะห์) |
 | Database | SQLite (fontai.db) |
 | Audio | Python `wave` module (chunking), ffmpeg (conversion) |
 
@@ -546,7 +546,7 @@ Official Store, Online, Department Store, Dealer
 1. **SQLite DB (`database/fontai.db`)** — สร้างอัตโนมัติตอน startup, ข้อมูลเก็บถาวร ไม่หายเมื่อ restart
 2. **ไฟล์เสียงเก็บ local** — `storage/uploads/`, DB เก็บแค่ path ไม่ได้เก็บตัวไฟล์
 3. **Groq Rate Limit → fail ทันที** — ไม่ retry, status เปลี่ยนเป็น `failed`, user กด re-Analyze เมื่อพร้อม
-4. **AI Pipeline เลือกอัตโนมัติ** — มี `TYPHOON_API_KEY` → Typhoon+pyannote+Llama / ไม่มี → Groq Whisper+Llama (fallback)
+4. **AI Pipeline เลือกอัตโนมัติ** — มี `TYPHOON_API_KEY` → Typhoon+pyannote+GPT-OSS / ไม่มี → Groq Whisper+GPT-OSS (fallback)
 5. **Speaker Diarization** — pyannote แยก Agent/Customer อัตโนมัติ, โหลด model ครั้งแรกช้า ~30s, ต้อง accept license ที่ HuggingFace
 4. **Queue ทำงานทีละ 1 ไฟล์** — พัก 15 วินาทีระหว่างไฟล์
 5. **File status 3 สถานะ** — `processing`, `analyzed`, `failed`

@@ -153,7 +153,7 @@ CREATE TABLE IF NOT EXISTS audio_analyses (
     corrected_transcript TEXT,
     audio_duration_seconds REAL DEFAULT 0,
 
-    -- Llama results
+    -- GPT-OSS analysis results
     sentiment           TEXT DEFAULT 'neutral',
     sentiment_score     REAL DEFAULT 0.5,
     intent              TEXT DEFAULT '',

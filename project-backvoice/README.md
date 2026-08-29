@@ -17,8 +17,8 @@ Frontend (Next.js 16 + React 19 + Tailwind 4)
 Backend (FastAPI + Python 3.12+)
   │
   ├── AI Pipeline (เลือกอัตโนมัติ)
-  │   ├── Typhoon ASR + pyannote diarization + Groq Llama   (ถ้ามี TYPHOON_API_KEY)
-  │   └── Groq Whisper large-v3 + Groq Llama 3.3 70B        (fallback)
+  │   ├── Typhoon ASR + pyannote diarization + Groq GPT-OSS 120B   (ถ้ามี TYPHOON_API_KEY)
+  │   └── Groq Whisper large-v3 + Groq GPT-OSS 120B                (fallback)
   │
   ├── SQLite (database/fontai.db)
   │   └── 13 tables: customers, addresses, brands, categories, products,
@@ -37,7 +37,7 @@ Backend (FastAPI + Python 3.12+)
 
 | Service | URL | ใช้ทำอะไร |
 |---------|-----|----------|
-| Groq | https://console.groq.com/keys | Whisper STT (fallback) + Llama analysis |
+| Groq | https://console.groq.com/keys | Whisper STT (fallback) + GPT-OSS analysis |
 | Typhoon | https://opentyphoon.ai | Thai ASR (แนะนำ ถ้ามีจะคุณภาพดีกว่า Whisper สำหรับภาษาไทย) |
 | HuggingFace | https://huggingface.co/settings/tokens | โหลด pyannote model (ต้อง accept license ที่ลิงก์ด้านล่าง) |
 
@@ -157,11 +157,11 @@ User อัปโหลดไฟล์เสียง (.wav/.mp3/.m4a/.aac/.ogg/
      → "Agent: ... / Customer: ..."
   2.5 Fix Transcript (chunked, plain text)     1.5 Fix Transcript (chunked, plain text)
   3. PII Masking (chunked, [NAME]/[PHONE])     2. PII Masking (chunked, [NAME]/[PHONE])
-  4. Groq Llama Analyze                        3. Groq Llama Analyze
+  4. Groq GPT-OSS Analyze                      3. Groq GPT-OSS Analyze
      → sentiment, intent, brand_names,            → (เหมือนกัน)
        product, channel, QA, CSAT, summary,
        keywords, key_insights, action_items
-  5. Llama Deep Customer Insight               4. Llama Deep Customer Insight
+  5. GPT-OSS Deep Customer Insight             4. GPT-OSS Deep Customer Insight
      → customer_need (รวมบริบทเหตุผล),            → (เหมือนกัน)
        pain_point, root_cause, expectation,
        risk_level, recommended_steps,
@@ -199,7 +199,7 @@ User อัปโหลดไฟล์เสียง (.wav/.mp3/.m4a/.aac/.ogg/
 
 **Fix Transcript (Chunked):**
 - หั่น transcript เป็น chunks ~2000 chars ตัดที่ขอบประโยค (`ครับ`/`ค่ะ`/`.`/`\n`)
-- Llama แก้คำผิด/ลบ noise/แปลงชื่อแบรนด์ไทย → อังกฤษ (เช่น `ดันลอปพิลโล่` → `Dunlopillo`)
+- GPT-OSS แก้คำผิด/ลบ noise/แปลงชื่อแบรนด์ไทย → อังกฤษ (เช่น `ดันลอปพิลโล่` → `Dunlopillo`)
 - Output เป็น plain text (ไม่ใช่ JSON) เพื่อประหยัด tokens
 - Safety check: ถ้า output สั้นกว่า input 30%+ → fallback ใช้ original
 
@@ -207,9 +207,9 @@ User อัปโหลดไฟล์เสียง (.wav/.mp3/.m4a/.aac/.ogg/
 - Mask `ชื่อบุคคล` → `[NAME]` และ `เบอร์โทร` → `[PHONE]`
 - Chunked เหมือน Fix Transcript
 - Keep แบรนด์, AGENT-104, รหัสสินค้า, วันที่, ราคา ไว้เหมือนเดิม
-- Mask ก่อนส่งให้ Llama วิเคราะห์ → ลด PII leakage
+- Mask ก่อนส่งให้ GPT-OSS วิเคราะห์ → ลด PII leakage
 
-**NLP Analysis (Llama 3.3 70B):**
+**NLP Analysis (GPT-OSS 120B):**
 ใน call เดียวคืนค่าครบ:
 - **Conversation Summary** — 4 จุดสรุป + 1-2 ประโยครวม
 - **Sentiment** — positive / neutral / negative + score 0.0-1.0
@@ -221,7 +221,7 @@ User อัปโหลดไฟล์เสียง (.wav/.mp3/.m4a/.aac/.ogg/
 - **Keywords** + **Key Insights** + **Action Items** (auto: ติดตามถ้า negative, ส่ง Retention ถ้ายกเลิก, แจ้ง Supervisor ถ้า QA < 6)
 
 **Deep Customer Insight (second-pass AI):**
-Llama รอบที่ 2 โดยไม่แก้ผล base analysis — คืน JSON:
+GPT-OSS รอบที่ 2 โดยไม่แก้ผล base analysis — คืน JSON:
 - `customer_need` — รวมสิ่งที่ลูกค้าต้องการ + บริบทเหตุผลในประโยคเดียว
 - `pain_point` / `root_cause` / `expectation`
 - `risk_level` — `low` / `medium` / `high`
@@ -402,7 +402,7 @@ $env:GROQ_API_KEYS="gsk_key1,gsk_key2,gsk_key3"
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `GROQ_API_KEY` | ✅ | Groq API Key หลัก (Llama analysis + Whisper fallback) |
+| `GROQ_API_KEY` | ✅ | Groq API Key หลัก (GPT-OSS analysis + Whisper fallback) |
 | `GROQ_API_KEY_2` ... `_20` | Optional | Key เพิ่มเติม (สลับ round-robin) |
 | `GROQ_API_KEYS` | Optional | หลาย key คั่นด้วย comma |
 | `TYPHOON_API_KEY` | แนะนำ | Typhoon ASR (ภาษาไทยแม่นกว่า) — ถ้าไม่มี → fallback ไป Groq Whisper |
@@ -439,7 +439,7 @@ python -c "import torch; print(f'CUDA: {torch.cuda.is_available()}, GPU: {torch.
 | `typhoon-asr-realtime` | Typhoon API (Cloud) | Speech-to-Text | ★ ภาษาไทยแม่น สร้างมาเพื่อไทยโดยเฉพาะ |
 | `pyannote/speaker-diarization-3.1` | Local (GPU/CPU) | Speaker Diarization | แยก Agent/Customer จากเสียง |
 | `whisper-large-v3` | Groq (Cloud) | Speech-to-Text | Fallback ถ้าไม่มี Typhoon API Key |
-| `llama-3.3-70b-versatile` | Groq (Cloud) | NLP Analysis | แก้ transcript (chunked) + mask PII (chunked) + วิเคราะห์ + Deep Insight |
+| `openai/gpt-oss-120b` | Groq (Cloud) | NLP Analysis | แก้ transcript (chunked) + mask PII (chunked) + วิเคราะห์ + Deep Insight |
 
 ### Pipeline Decision
 
@@ -460,7 +460,7 @@ python -c "import torch; print(f'CUDA: {torch.cuda.is_available()}, GPU: {torch.
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `WHISPER_MODEL` | `whisper-large-v3` | Groq Whisper model |
-| `LLAMA_MODEL` | `llama-3.3-70b-versatile` | Groq Llama model |
+| `ANALYSIS_MODEL` | `openai/gpt-oss-120b` | Groq GPT-OSS model |
 | `WHISPER_MAX_FILE_SIZE_MB` | 24 | chunk ถ้าเกินขนาดนี้ (Groq limit = 25MB) |
 | `CHUNK_DURATION_SECONDS` | 300 | ตัดทุกกี่วินาที (5 นาที) |
 | `DELAY_BETWEEN_STEPS` | 1 | พักระหว่าง step (วินาที) |
@@ -565,7 +565,7 @@ AI จะแปลงชื่อภาษาไทยเป็นภาษา�
 
 ## ช่องทางขาย
 
-ใน Llama prompt: Official Store, Online, Department Store, Dealer
+ใน GPT-OSS prompt: Official Store, Online, Department Store, Dealer
 ใน DB seed มี 9 channels (รวม Shopee, Lazada, Mattress City, SB Store, Official Website)
 
 ---
@@ -578,7 +578,7 @@ AI จะแปลงชื่อภาษาไทยเป็นภาษา�
 | Backend | FastAPI, Python 3.12+, Uvicorn |
 | AI (STT) | Typhoon ASR (ภาษาไทย) / Groq Whisper large-v3 (fallback) |
 | AI (Diarization) | pyannote/speaker-diarization-3.1 (Local GPU/CPU) |
-| AI (Analysis) | Groq Llama 3.3 70B versatile |
+| AI (Analysis) | Groq GPT-OSS 120B |
 | Database | SQLite (WAL mode, foreign_keys ON) |
 | Audio | Python `wave` (chunking), ffmpeg (conversion → 16kHz mono PCM) |
 | Auth | SHA256 hash (salt = `fontai_<password>_salt`), sessionStorage |
@@ -659,7 +659,7 @@ project-frontend/
 2. **WAL mode + foreign_keys ON** — ทำให้อ่าน/เขียนพร้อมกันได้
 3. **Migration อัตโนมัติ** — เพิ่มคอลัมน์ `deep_insight` และสร้างตาราง `admin_activity_logs` ตอน `init_db()`
 4. **ไฟล์เสียงเก็บ local** — `storage/uploads/` (DB เก็บแค่ path)
-5. **AI Pipeline เลือกอัตโนมัติ** — มี `TYPHOON_API_KEY` → Typhoon+pyannote+Llama / ไม่มี → Groq Whisper+Llama
+5. **AI Pipeline เลือกอัตโนมัติ** — มี `TYPHOON_API_KEY` → Typhoon+pyannote+GPT-OSS / ไม่มี → Groq Whisper+GPT-OSS
 6. **Speaker Diarization lazy load** — pyannote โหลด model ครั้งแรกช้า ~30s, ต้อง accept license ที่ HuggingFace
 7. **Groq Rate Limit → fail ทันที** — ไม่ retry, status = `failed`, user กด re-Analyze เมื่อพร้อม
 8. **Multi API Key Rotation** — Round-robin ทุก request (ทั้ง Whisper, fix, mask, analyze, deep insight)

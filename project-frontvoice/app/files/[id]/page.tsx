@@ -14,7 +14,7 @@ interface TranscriptionSegment {
   start: number;
   end: number;
   text: string;
-  // Llama fallback fields
+  // AI analysis fallback fields
   speaker?: string;
   time?: string;
 }
@@ -395,7 +395,7 @@ export default function FileAnalysisDetail() {
                 <>
                   <Loader2 size={40} className="text-blue-600 mx-auto mb-4 animate-spin" />
                   <h3 className="text-lg font-bold text-blue-800 dark:text-blue-300 mb-2">AI กำลังวิเคราะห์ไฟล์เสียง...</h3>
-                  <p className="text-sm text-blue-600 dark:text-blue-400 mb-2">Whisper กำลังถอดข้อความ → Llama กำลังวิเคราะห์</p>
+                  <p className="text-sm text-blue-600 dark:text-blue-400 mb-2">Whisper กำลังถอดข้อความ → GPT-OSS 120B กำลังวิเคราะห์</p>
                   <div className="flex items-center justify-center gap-2 mt-4">
                     <div className="flex gap-1">
                       <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
@@ -472,7 +472,7 @@ export default function FileAnalysisDetail() {
                         <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Summary Insight</h2>
                       </div>
                       <p className="text-xs text-slate-400 dark:text-slate-500 ml-9 mb-1">
-                        วิเคราะห์โดย Llama 3.3 จากข้อมูล Speech-to-Text ของ Whisper
+                        วิเคราะห์โดย GPT-OSS 120B จากข้อมูล Speech-to-Text ของ Whisper
                       </p>
                       <p className="text-[11px] text-blue-500 dark:text-blue-400 ml-9 mb-5">
                         จัดรูปแบบจาก transcript และผลวิเคราะห์เดิมเท่านั้น ไม่แก้ไขเสียงหรือผลถอดคำ

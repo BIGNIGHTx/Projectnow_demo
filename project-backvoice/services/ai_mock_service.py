@@ -3,7 +3,7 @@
 # Mock AI Service — จำลอง AI Models 3 ตัว
 #
 # === UPDATE v0.6.0 ===
-# Llama NLP ตอนนี้ extract 3 ข้อมูลใหม่:
+# GPT-OSS NLP ตอนนี้ extract 3 ข้อมูลใหม่:
 #   1. brand_name       → แบรนด์จริง 12 แบรนด์
 #   2. product_category → 6 หมวดสินค้า
 #   3. sale_channel     → 4 ช่องทางซื้อขาย
@@ -19,7 +19,7 @@ from typing import Optional
 # STEP 1: Mock Transcript Dataset
 # =============================================================================
 # แต่ละ transcript มี hint สำหรับ brand, product, channel
-# เพื่อให้ Llama NLP ใช้ extract ข้อมูล
+# เพื่อให้ GPT-OSS NLP ใช้ extract ข้อมูล
 
 _MOCK_TRANSCRIPTS = [
     {
@@ -117,7 +117,7 @@ _QA_CRITERIA = [
 # STEP 2: Brand / Product / Channel Detection (จำลอง NER)
 # =============================================================================
 # keyword matching เพื่อจำลอง Named Entity Recognition
-# ในระบบจริง Llama 3.3 จะทำ NER ได้เองโดยไม่ต้อง keyword
+# ในระบบจริง GPT-OSS 120B จะทำ NER ได้เองโดยไม่ต้อง keyword
 
 _BRAND_KEYWORDS = {
     "Lotus":         ["lotus", "โลตัส"],
@@ -255,7 +255,7 @@ async def mock_wav2vec2_sentiment(file_id: str, transcript: Optional[str] = None
 
 
 # =============================================================================
-# STEP 5: Mock Llama 3.3 — NLP + QA + Brand/Product/Channel Extraction
+# STEP 5: Mock GPT-OSS 120B — NLP + QA + Brand/Product/Channel Extraction
 # =============================================================================
 
 async def mock_llama_nlp_analysis(
@@ -306,7 +306,7 @@ async def mock_llama_nlp_analysis(
     if not actions: actions.append("✅ ปิดเคสได้")
 
     return {
-        "model": "llama-3.3-70b-instruct", "status": "completed", "file_id": file_id,
+        "model": "openai/gpt-oss-120b", "status": "completed", "file_id": file_id,
         "intent": {"detected": detected_intent, "label_th": intent_info["label"], "category": intent_info["category"], "confidence": round(random.uniform(0.78, 0.97), 3)},
         "entities": entities,
         "qa_scoring": {"final_score": final_qa, "max_score": 10.0, "grade": _score_to_grade(final_qa), "criteria_breakdown": criteria_scores},

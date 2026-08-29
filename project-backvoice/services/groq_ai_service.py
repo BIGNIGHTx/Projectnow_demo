@@ -1,9 +1,9 @@
 # =============================================================================
 # services/groq_ai_service.py — v1.1.0
-# Real AI Service — Groq API (Whisper + Llama)
+# Real AI Service — Groq API (Whisper + GPT-OSS)
 #
 # Whisper: ถอดเสียงเป็นข้อความ (Speech-to-Text) — รองรับ Chunking ไฟล์ยาว
-# Llama:   สรุปบทสนทนา + วิเคราะห์ Sentiment, Intent, Brand, Product, Channel
+# GPT-OSS: สรุปบทสนทนา + วิเคราะห์ Sentiment, Intent, Brand, Product, Channel
 #
 # Chunking: ไฟล์เสียง >5 นาที หรือ >24MB จะถูกตัดเป็น chunk ละ 5 นาที
 #           ส่ง Whisper ทีละ chunk แล้วรวม transcript กลับเป็นอันเดียว
@@ -39,8 +39,10 @@ except ImportError:
 # CONFIG
 # =============================================================================
 
-WHISPER_MODEL = "whisper-large-v3"         # Groq Whisper model (full — แม่นกว่า turbo)
-LLAMA_MODEL = "llama-3.3-70b-versatile"    # Groq Llama model
+WHISPER_MODEL = "whisper-large-v3"              # Groq Whisper model (full — แม่นกว่า turbo)
+ANALYSIS_MODEL = "openai/gpt-oss-120b"           # Groq-hosted OpenAI GPT-OSS 120B
+ANALYSIS_REASONING_EFFORT = "low"                # ลด latency/token usage สำหรับ extraction + JSON
+ANALYSIS_MAX_OUTPUT_TOKENS = 2048                 # เผื่อ input ภายใต้ free-plan 8K TPM
 
 # =============================================================================
 # ★ MULTI API KEY ROTATION — สลับ key อัตโนมัติเมื่อชน rate limit
@@ -117,7 +119,7 @@ WHISPER_MAX_FILE_SIZE_MB = 24          # Groq limit = 25MB, ใช้ 24 เผ�
 CHUNK_DURATION_SECONDS = 300           # ตัดทุก 5 นาที (ปลอดภัยสำหรับไฟล์ทุกขนาด)
 
 # Delay ระหว่าง step (วินาที)
-DELAY_BETWEEN_STEPS = 1               # พักเล็กน้อยระหว่าง Whisper → Llama
+DELAY_BETWEEN_STEPS = 1               # พักเล็กน้อยระหว่าง Whisper → GPT-OSS
 
 
 # =============================================================================
@@ -138,7 +140,7 @@ def _retry_on_rate_limit(func, *args, **kwargs):
             raise RuntimeError(f"Rate limit exceeded — กรุณารอสักครู่แล้วกด re-Analyze ใหม่")
         raise
 
-# QA Criteria (ใช้ให้ Llama ประเมิน)
+# QA Criteria (ใช้ให้ GPT-OSS ประเมิน)
 QA_CRITERIA = [
     "การทักทายและแนะนำตัว",
     "การรับฟังและทำความเข้าใจปัญหา",
@@ -658,7 +660,7 @@ async def groq_whisper_transcribe(file_id: str, audio_file_path: str) -> dict:
 
 
 # =============================================================================
-# STEP 2: Llama — NLP Analysis + Summary via Groq
+# STEP 2: GPT-OSS 120B — NLP Analysis + Summary via Groq
 # =============================================================================
 
 async def groq_llama_analyze(
@@ -667,14 +669,14 @@ async def groq_llama_analyze(
     segments: list = None,
 ) -> dict:
     """
-    ใช้ Groq Llama API วิเคราะห์บทสนทนา:
+    ใช้ Groq GPT-OSS 120B API วิเคราะห์บทสนทนา:
     - สรุปบทสนทนา (Conversation Summary)
     - วิเคราะห์ Sentiment
     - ตรวจจับ Intent
     - สกัด Brand, Product Category, Sale Channel
     - ให้คะแนน QA
     
-    หมายเหตุ: Transcription Detail ใช้ segments จาก Whisper โดยตรง (ไม่ใช่ Llama)
+    หมายเหตุ: Transcription Detail ใช้ segments จาก Whisper โดยตรง (ไม่ใช่ GPT-OSS)
 
     Args:
         file_id: ID ของไฟล์
@@ -767,9 +769,10 @@ Intent ที่เป็นไปได้:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            model=LLAMA_MODEL,
+            model=ANALYSIS_MODEL,
+            reasoning_effort=ANALYSIS_REASONING_EFFORT,
             temperature=0.1,
-            max_tokens=8192,                          # ★ เพิ่มจาก 4096 เผื่อ transcript ยาว
+            max_tokens=ANALYSIS_MAX_OUTPUT_TOKENS,
             response_format={"type": "json_object"},
         )
         return chat_completion.choices[0].message.content
@@ -785,7 +788,7 @@ Intent ที่เป็นไปได้:
         if json_match:
             result = json.loads(json_match.group())
         else:
-            raise ValueError(f"Cannot parse Llama response as JSON: {raw_response[:200]}")
+            raise ValueError(f"Cannot parse GPT-OSS response as JSON: {raw_response[:200]}")
 
     # Extract & normalize fields
     sentiment = result.get("sentiment", "neutral").lower()
@@ -825,7 +828,7 @@ Intent ที่เป็นไปได้:
     processing_time = (datetime.now() - start_time).total_seconds()
 
     return {
-        "model": LLAMA_MODEL,
+        "model": ANALYSIS_MODEL,
         "status": "completed",
         "file_id": file_id,
         "corrected_transcript": result.get("corrected_transcript", transcript),  # ★ transcript ที่แก้แล้ว
@@ -855,7 +858,7 @@ Intent ที่เป็นไปได้:
 
 
 # =============================================================================
-# STEP 2.6: Llama — Deep Customer Insight (Second-Pass)
+# STEP 2.6: GPT-OSS 120B — Deep Customer Insight (Second-Pass)
 # =============================================================================
 
 async def groq_llama_deep_insight(
@@ -956,9 +959,10 @@ Rules:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            model=LLAMA_MODEL,
+            model=ANALYSIS_MODEL,
+            reasoning_effort=ANALYSIS_REASONING_EFFORT,
             temperature=0.2,
-            max_tokens=2048,
+            max_tokens=ANALYSIS_MAX_OUTPUT_TOKENS,
             response_format={"type": "json_object"},
         )
         return chat_completion.choices[0].message.content
@@ -1056,11 +1060,11 @@ Rules:
 
 
 # =============================================================================
-# STEP 2.5: Llama — แก้ไข Transcript ให้ถูกต้อง
+# STEP 2.5: GPT-OSS 120B — แก้ไข Transcript ให้ถูกต้อง
 # =============================================================================
 
 # =============================================================================
-# STEP 2.6: Llama — PII Masking (Privacy Layer)
+# STEP 2.6: GPT-OSS 120B — PII Masking (Privacy Layer)
 # =============================================================================
 
 async def mask_pii_with_llama(
@@ -1099,7 +1103,7 @@ async def mask_pii_with_llama(
 
     # ★ Split transcript เป็น chunks ถ้ายาว
     # ภาษาไทย ~3 chars/token → 2000 chars ≈ 700 tokens input + 700 tokens output = 1400 tokens
-    # max_tokens=4096 มีที่เหลือเฟือ ป้องกัน output ถูกตัด
+    # 2,048 output tokens เพียงพอสำหรับข้อความที่แบ่งเป็น chunk ละ 2,000 ตัวอักษร
     CHUNK_SIZE = 2000
     chunks = _split_text_for_masking(transcript, CHUNK_SIZE)
 
@@ -1204,9 +1208,10 @@ Return ONLY the masked text — no JSON, no markdown, no explanation."""
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            model=LLAMA_MODEL,
+            model=ANALYSIS_MODEL,
+            reasoning_effort=ANALYSIS_REASONING_EFFORT,
             temperature=0.0,
-            max_tokens=4096,
+            max_tokens=ANALYSIS_MAX_OUTPUT_TOKENS,
             # ★ ไม่ใช้ response_format JSON — ใช้ plain text ลด overhead
         )
         return chat_completion.choices[0].message.content
@@ -1247,7 +1252,7 @@ Return ONLY the masked text — no JSON, no markdown, no explanation."""
 
 
 # =============================================================================
-# STEP 2.5: Llama — แก้ไข Transcript (Chunked Version)
+# STEP 2.5: GPT-OSS 120B — แก้ไข Transcript (Chunked Version)
 # =============================================================================
 
 async def fix_transcript_chunked(
@@ -1350,9 +1355,10 @@ async def _fix_single_chunk(chunk: str, file_id: str, chunk_idx: int, total_chun
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            model=LLAMA_MODEL,
+            model=ANALYSIS_MODEL,
+            reasoning_effort=ANALYSIS_REASONING_EFFORT,
             temperature=0.1,
-            max_tokens=4096,
+            max_tokens=ANALYSIS_MAX_OUTPUT_TOKENS,
         )
         return chat_completion.choices[0].message.content
 
@@ -1373,7 +1379,7 @@ async def _fix_single_chunk(chunk: str, file_id: str, chunk_idx: int, total_chun
 
 
 # =============================================================================
-# STEP 2.5 (Legacy): Llama — แก้ไข Transcript ให้ถูกต้อง
+# STEP 2.5 (Legacy): GPT-OSS 120B — แก้ไข Transcript ให้ถูกต้อง
 # =============================================================================
 
 async def groq_llama_fix_transcript(
@@ -1382,7 +1388,7 @@ async def groq_llama_fix_transcript(
     segments: list = None,
 ) -> dict:
     """
-    ใช้ Llama แก้ไข transcript ที่ Whisper ถอดมา:
+    ใช้ GPT-OSS 120B แก้ไข transcript ที่ Whisper ถอดมา:
     - แก้คำผิด / สะกดผิด
     - แก้คำที่ถอดไม่ครบ (เช่น "ครับ จากท" → "ครับ จากทาง")
     - แก้ชื่อแบรนด์/สินค้าให้ถูกต้อง
@@ -1401,7 +1407,7 @@ async def groq_llama_fix_transcript(
 
     loop = asyncio.get_event_loop()
 
-    # สร้าง segment text พร้อม timestamp สำหรับ Llama
+    # สร้าง segment text พร้อม timestamp สำหรับ GPT-OSS
     segments_text = ""
     if segments:
         for seg in segments:
@@ -1467,9 +1473,10 @@ async def groq_llama_fix_transcript(
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            model=LLAMA_MODEL,
+            model=ANALYSIS_MODEL,
+            reasoning_effort=ANALYSIS_REASONING_EFFORT,
             temperature=0.1,
-            max_tokens=8192,                          # ★ เพิ่มจาก 4096
+            max_tokens=ANALYSIS_MAX_OUTPUT_TOKENS,
             response_format={"type": "json_object"},
         )
         return chat_completion.choices[0].message.content
@@ -1485,7 +1492,7 @@ async def groq_llama_fix_transcript(
             result = json.loads(json_match.group())
         else:
             # ถ้า parse ไม่ได้ → ใช้ transcript เดิม
-            print(f"  ⚠️ Llama fix parse failed, using original transcript")
+            print(f"  ⚠️ GPT-OSS fix parse failed, using original transcript")
             return {
                 "corrected_transcript": transcript,
                 "corrected_segments": segments or [],
@@ -1533,7 +1540,7 @@ async def groq_llama_fix_transcript(
 
 
 # =============================================================================
-# STEP 3: Full Pipeline — Whisper → Llama (Fix + Analyze ใน call เดียว)
+# STEP 3: Full Pipeline — Whisper → GPT-OSS 120B
 # =============================================================================
 
 async def run_groq_analysis_pipeline(
@@ -1544,7 +1551,7 @@ async def run_groq_analysis_pipeline(
     """
     Full AI Pipeline (2 Steps — เร็วขึ้น ชน rate limit น้อยลง):
     1. Whisper  — ถอดเสียงเป็นข้อความ
-    2. Llama    — แก้ transcript + วิเคราะห์ + สรุป (รวมใน call เดียว)
+    2. GPT-OSS 120B — แก้ transcript + วิเคราะห์ + สรุป
 
     Args:
         file_id: ID ของไฟล์
@@ -1591,9 +1598,9 @@ async def run_groq_analysis_pipeline(
     masked_transcript = mask_result["masked_transcript"]
     print(f"  ✅ Step 2 done: {mask_result['mask_count']}")
 
-    # --- Step 3: Llama Analyze (ใช้ masked + ไม่ต้องคืน transcript ใน JSON) ---
+    # --- Step 3: GPT-OSS Analyze (ใช้ masked + ไม่ต้องคืน transcript ใน JSON) ---
     await asyncio.sleep(DELAY_BETWEEN_STEPS)
-    print(f"  Step 3/4: Llama Analyze...")
+    print(f"  Step 3/4: GPT-OSS 120B Analyze...")
 
     llama_result = await groq_llama_analyze(
         file_id=file_id,
@@ -1671,7 +1678,7 @@ async def run_groq_analysis_pipeline(
 # Brand Whitelist + Normalization
 # =============================================================================
 
-# ★ Brand ที่อนุญาต — รายชื่อ canonical (ต้องตรงกับใน Llama prompt)
+# ★ Brand ที่อนุญาต — รายชื่อ canonical (ต้องตรงกับใน GPT-OSS prompt)
 ALLOWED_BRANDS = {
     "Lotus", "Bedgear", "Dunlopillo", "Midas", "Topper", "Omazz",
     "LaLaBed", "Zinus", "Eastman House", "Malouf", "Loto Mobili",
@@ -1679,7 +1686,7 @@ ALLOWED_BRANDS = {
     "Slumberland", "Synda", "Theraflex", "Serta", "Sealy", "Simmons",
 }
 
-# ★ คำที่ Whisper/Llama มักถอดผิด → canonical brand
+# ★ คำที่ Whisper/GPT-OSS มักถอดผิด → canonical brand
 # เพิ่มตัวสะกดผิดที่เคยเจอที่นี่ — สามารถเพิ่มได้เรื่อยๆ
 BRAND_ALIASES = {
     # Dunlopillo aliases (Whisper ถอดผิดเป็น...)
@@ -1765,10 +1772,10 @@ def _similarity_ratio(a: str, b: str) -> float:
 
 def _parse_brand_names(result: dict) -> list:
     """
-    Parse brand จาก Llama response — รองรับทั้ง array และ string
+    Parse brand จาก GPT-OSS response — รองรับทั้ง array และ string
     + Normalize ตาม whitelist (กรองคำที่ Whisper ถอดผิด เช่น DALOXXFIRO)
 
-    Llama อาจตอบเป็น:
+    GPT-OSS อาจตอบเป็น:
     - brand_names: ["Lotus", "Omazz"]     → array (ต้องการ)
     - brand_name: "Lotus"                  → string เดี่ยว (backward compat)
     - brand_name: "Lotus, Omazz"           → string หลายแบรนด์คั่นด้วย comma
@@ -1828,7 +1835,7 @@ def _score_to_grade(s):
 # =============================================================================
 # TYPHOON + PYANNOTE PIPELINE
 # =============================================================================
-# Flow: Typhoon STT → pyannote diarization → merge → Groq Llama analyze
+# Flow: Typhoon STT → pyannote diarization → merge → Groq GPT-OSS analyze
 # =============================================================================
 
 async def run_typhoon_pipeline(
@@ -1838,10 +1845,10 @@ async def run_typhoon_pipeline(
     on_step_complete=None,
 ) -> dict:
     """
-    Full AI Pipeline (3 Steps — Typhoon + pyannote + Llama):
+    Full AI Pipeline (3 Steps — Typhoon + pyannote + GPT-OSS 120B):
     1. Typhoon ASR  — ถอดเสียงภาษาไทย (timestamps)
     2. pyannote     — แยกผู้พูด (speaker diarization)
-    3. Groq Llama   — แก้ transcript + วิเคราะห์
+    3. Groq GPT-OSS 120B — แก้ transcript + วิเคราะห์
 
     Args:
         file_id: ID ของไฟล์
@@ -1910,9 +1917,9 @@ async def run_typhoon_pipeline(
     masked_transcript = mask_result["masked_transcript"]
     print(f"  ✅ Step 3 done: {mask_result['mask_count']}")
 
-    # --- Step 4: Groq Llama Analyze (ไม่ต้องคืน corrected_transcript) ---
+    # --- Step 4: Groq GPT-OSS Analyze (ไม่ต้องคืน corrected_transcript) ---
     await asyncio.sleep(DELAY_BETWEEN_STEPS)
-    print(f"  Step 4/5: Llama Analyze...")
+    print(f"  Step 4/5: GPT-OSS 120B Analyze...")
 
     llama_result = await groq_llama_analyze(
         file_id=file_id,

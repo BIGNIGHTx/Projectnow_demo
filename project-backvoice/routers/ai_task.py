@@ -4,8 +4,8 @@
 #
 # Pipeline:
 #   1. Whisper (Groq) — ถอดเสียงเป็นข้อความ
-#   2. Llama #1 (Groq) — แก้ไข Transcript
-#   3. Llama #2 (Groq) — วิเคราะห์ NLP + สรุป + QA Score
+#   2. GPT-OSS 120B (Groq) — แก้ไข Transcript
+#   3. GPT-OSS 120B (Groq) — วิเคราะห์ NLP + สรุป + QA Score
 #
 # ★ Queue System:
 #   - อัปโหลดหลายไฟล์พร้อมกัน → เข้าคิวอัตโนมัติ
@@ -92,14 +92,14 @@ async def _queue_worker():
                     pass
 
                 if use_typhoon:
-                    # Pipeline ใหม่: Typhoon STT → pyannote → Llama
+                    # Pipeline ใหม่: Typhoon STT → pyannote → GPT-OSS 120B
                     from services.groq_ai_service import run_typhoon_pipeline
                     from database.db import get_audio_file_by_id
                     file_info = get_audio_file_by_id(file_id)
                     call_dir = file_info.get("call_direction", "Unknown") if file_info else "Unknown"
 
                     if task_id in TASK_STORE:
-                        TASK_STORE[task_id]["message"] = "🌊 Typhoon STT → 🎤 pyannote → 🧠 Llama..."
+                        TASK_STORE[task_id]["message"] = "🌊 Typhoon STT → 🎤 pyannote → 🧠 GPT-OSS 120B..."
 
                     result = await run_typhoon_pipeline(
                         file_id=file_id,
@@ -107,9 +107,9 @@ async def _queue_worker():
                         call_direction=call_dir,
                     )
                 else:
-                    # Pipeline เดิม: Groq Whisper → Llama
+                    # Pipeline เดิม: Groq Whisper → GPT-OSS 120B
                     if task_id in TASK_STORE:
-                        TASK_STORE[task_id]["message"] = "🔄 Whisper → Llama..."
+                        TASK_STORE[task_id]["message"] = "🔄 Whisper → GPT-OSS 120B..."
 
                     result = await run_groq_analysis_pipeline(
                         file_id=file_id,
@@ -154,6 +154,7 @@ async def _queue_worker():
                     "key_insights": llama_result.get("key_insights", ""),
                     "keywords": llama_result.get("keywords", []),
                     "deep_insight": result["summary"].get("deep_insight", {}),
+                    "model_version": llama_result.get("model", "openai/gpt-oss-120b"),
                     "model_results": result["model_results"],
                     "created_by": created_by,
                 }

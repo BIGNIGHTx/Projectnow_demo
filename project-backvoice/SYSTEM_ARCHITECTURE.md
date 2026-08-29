@@ -8,7 +8,7 @@ This document describes the real system architecture for your ProjectNoW backend
 
 ## 1. Summary
 
-ProjectNoW is a FastAPI-based backend that provides warranty management and an audio-AI analysis pipeline. The system stores metadata and analysis results in SQLite and stores audio files on local disk under `storage/`. AI integrations include Groq (Whisper + Llama) and optional Typhoon + pyannote for STT/diarization.
+ProjectNoW is a FastAPI-based backend that provides warranty management and an audio-AI analysis pipeline. The system stores metadata and analysis results in SQLite and stores audio files on local disk under `storage/`. AI integrations include Groq (Whisper + GPT-OSS 120B) and optional Typhoon + pyannote for STT/diarization.
 
 Key repo locations:
 
@@ -26,7 +26,7 @@ Key repo locations:
 - Backend API (FastAPI): routes in `routers/` and orchestration logic in `services/`
 - Database: SQLite (`database/fontai.db`) schema defined in [database/schema.sql](database/schema.sql#L1-L999)
 - File Storage: local directories under `storage/`
-- AI Integrations: Groq (Whisper + Llama), optional Typhoon STT and Pyannote diarization
+- AI Integrations: Groq (Whisper + GPT-OSS 120B), optional Typhoon STT and Pyannote diarization
 - Auth & Audit: `admin_users`, `admin_activity_logs`
 
 ---
@@ -51,7 +51,7 @@ flowchart LR
   end
 
   subgraph AI ["AI Integrations"]
-    GROQ[Groq (Whisper + Llama)]
+    GROQ[Groq (Whisper + GPT-OSS 120B)]
     TYPHOON[Typhoon STT]
     PYANNOTE[Pyannote Diarization]
   end
@@ -76,7 +76,7 @@ flowchart LR
   E[Post-process segments (language filter, clean)]
   F[Fix Transcript (fix_transcript_chunked)]
   G[PII Masking (mask_pii_with_llama)]
-  H[Llama Analyze (groq_llama_analyze)]
+  H[GPT-OSS Analyze (groq_llama_analyze)]
   I[Deep Insight (groq_llama_deep_insight)]
   J[Persist audio_analyses + update audio_files(status)]
   K[Notify frontend / Return result]
@@ -94,7 +94,7 @@ flowchart LR
   D[Merge transcript + speaker tags]
   E[Fix Transcript (chunked)]
   F[PII Masking]
-  G[Llama Analyze]
+  G[GPT-OSS Analyze]
   H[Deep Insight]
   I[Persist & Notify]
 
@@ -114,7 +114,7 @@ sequenceDiagram
   U->>API: POST /audio/upload (file + metadata)
   API->>DB: INSERT audio_files (status=processing) + save file to uploads/
   API->>SVC: trigger analysis pipeline (sync/async)
-  SVC->>AI: call Whisper / Llama or Typhoon
+  SVC->>AI: call Whisper / GPT-OSS or Typhoon
   AI-->>SVC: transcript, segments, analysis
   SVC->>DB: INSERT audio_analyses, UPDATE audio_files(status=completed)
   SVC-->>API: result / job update
@@ -244,7 +244,7 @@ Refer to actual router implementations in the `routers/` folder for exact reques
 
 - Configuration:
   - Provide Groq keys via `GROQ_API_KEYS` or `GROQ_API_KEY`, `GROQ_API_KEY_2`, ... (see `services/groq_ai_service.py`).
-  - Set `WHISPER_MODEL` and `LLAMA_MODEL` in `services/groq_ai_service.py` if needed.
+  - Model IDs are configured through `WHISPER_MODEL` and `ANALYSIS_MODEL` in `services/groq_ai_service.py`.
 
 - Rate limiting:
   - `_retry_on_rate_limit` in `services/groq_ai_service.py` fails fast on 429 (user should re-trigger re-analyze). Optionally implement retries/backoff.

@@ -394,3 +394,19 @@ main .space-y-6 > :not([hidden]) ~ :not([hidden]) {
   background-color: #121212 !important;
   background-image: none !important;
 }
+
+.dark body aside[class*="h-screen"] {
+  background-color: var(--dark-bg) !important;
+  background-image: none !important;
+}
+
+.dark body aside[class*="h-screen"] + main {
+  background-color: var(--dark-surface-soft) !important;
+  background-image: none !important;
+}
+
+.dark body .page-bg-dark > main.page-bg-dark,
+.dark body aside[class*="h-screen"] + main.page-bg-dark {
+  background-color: var(--dark-surface-soft) !important;
+  background-image: none !important;
+}

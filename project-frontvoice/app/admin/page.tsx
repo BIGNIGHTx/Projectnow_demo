@@ -231,6 +231,74 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 // Flat list of all permission items
 const ALL_PERMISSIONS: PermissionItem[] = PERMISSION_GROUPS.flatMap((g) => g.permissions);
 
+const PERMISSION_LOG_LABELS: Record<string, string> = {
+  dashboard_view: 'ดู Dashboard',
+  dashboard_export: 'ส่งออกรายงาน',
+  files_view: 'ดูไฟล์เสียง',
+  files_upload: 'อัปโหลดไฟล์',
+  files_analyze: 'วิเคราะห์ไฟล์',
+  files_download: 'ดาวน์โหลดไฟล์',
+  files_delete: 'ลบไฟล์',
+  customers_view: 'ดูข้อมูลลูกค้า',
+  customers_edit: 'แก้ไขลูกค้า',
+  customers_export: 'ส่งออกลูกค้า',
+  customers_delete: 'ลบลูกค้า',
+  agents_view: 'ดู Voice Agents',
+  agents_manage: 'ตั้งค่า Voice Agents',
+  warranty_view: 'ดูประกัน',
+  warranty_manage: 'จัดการประกัน',
+  logs_view: 'ดู Activity Logs',
+};
+
+function getDefaultPermissions(targetUser: Pick<AdminUser, 'role'>): Record<string, boolean> {
+  const defaults: Record<string, boolean> = {};
+  ALL_PERMISSIONS.forEach((p) => {
+    defaults[p.id] = targetUser.role === 'STAFF' ? p.defaultStaff : p.defaultViewer;
+  });
+  return defaults;
+}
+
+function readSavedPermissionsByUser(): Record<number, Record<string, boolean>> {
+  try {
+    const saved = localStorage.getItem('fontai_user_permissions');
+    const parsed: unknown = saved ? JSON.parse(saved) : {};
+    return parsed && typeof parsed === 'object' ? parsed as Record<number, Record<string, boolean>> : {};
+  } catch {
+    return {};
+  }
+}
+
+function compactPermissionList(labels: string[], maxItems = 3): string {
+  if (labels.length <= maxItems) return labels.join(', ');
+
+  const visibleLabels = labels.slice(0, maxItems).join(', ');
+  return `${visibleLabels} +อีก ${labels.length - maxItems}`;
+}
+
+function buildPermissionChangeDetail(
+  targetUser: AdminUser,
+  previousPerms: Record<string, boolean>,
+  currentPerms: Record<string, boolean>
+): string {
+  const changedPerms = ALL_PERMISSIONS.filter((p) => Boolean(previousPerms[p.id]) !== Boolean(currentPerms[p.id]));
+  const turnedOn = changedPerms
+    .filter((p) => currentPerms[p.id])
+    .map((p) => PERMISSION_LOG_LABELS[p.id] || p.title);
+  const turnedOff = changedPerms
+    .filter((p) => !currentPerms[p.id])
+    .map((p) => PERMISSION_LOG_LABELS[p.id] || p.title);
+  const allowedCount = ALL_PERMISSIONS.filter((p) => currentPerms[p.id]).length;
+  const countText = `${allowedCount}/${ALL_PERMISSIONS.length}`;
+  const changes: string[] = [];
+
+  if (turnedOn.length > 0) changes.push(`เปิด: ${compactPermissionList(turnedOn)}`);
+  if (turnedOff.length > 0) changes.push(`ปิด: ${compactPermissionList(turnedOff)}`);
+
+  return changes.length > 0
+    ? `อัปเดตสิทธิ์ (${countText}): ${changes.join(' | ')}`
+    : `อัปเดตสิทธิ์ ${targetUser.full_name}: ไม่มีสิทธิ์ที่เปลี่ยน`;
+}
+
 // ----- Helper for module icons -----
 function renderModuleIcon(iconName: string) {
   switch (iconName) {
@@ -270,6 +338,77 @@ const ACTION_COLORS: Record<string, string> = {
 
 function actionBadgeClass(action: string): string {
   return ACTION_COLORS[action] || 'bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700';
+}
+
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return 'ไม่ทราบขนาด';
+
+  const units = ['bytes', 'KB', 'MB', 'GB'];
+  let size = bytes;
+  let unitIndex = 0;
+
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+
+  const value = unitIndex === 0 || size >= 10 ? Math.round(size) : Number(size.toFixed(1));
+  return `${value} ${units[unitIndex]}`;
+}
+
+function shortenDetail(text: string, maxLength = 90): string {
+  const oneLine = text.replace(/\s+/g, ' ').trim();
+  return oneLine.length > maxLength ? `${oneLine.slice(0, maxLength - 3)}...` : oneLine;
+}
+
+function formatLogDetail(log: ActivityLog): string {
+  const detail = log.detail?.trim() || '';
+
+  switch (log.action) {
+    case 'LOGIN':
+      return 'เข้าสู่ระบบ';
+    case 'LOGOUT':
+      return 'ออกจากระบบ';
+    case 'REGISTER':
+      return 'สร้างบัญชีใหม่';
+    case 'ACTIVATE_USER':
+      return 'เปิดใช้งานบัญชี';
+    case 'DEACTIVATE_USER':
+      return 'ระงับบัญชีผู้ใช้';
+    case 'UPDATE_ROLE': {
+      const roleMatch = detail.match(/(.+?)\s*(?:→|->)\s*(.+)/);
+      return roleMatch ? `เปลี่ยนบทบาทจาก ${roleMatch[1].trim()} เป็น ${roleMatch[2].trim()}` : 'เปลี่ยนบทบาทผู้ใช้';
+    }
+    case 'UPDATE_ROLE_PERMISSIONS':
+    case 'UPDATE_USER_PERMISSIONS': {
+      if (detail.includes('เปิด:') || detail.includes('ปิด:') || detail.includes('ไม่มีสิทธิ์ที่เปลี่ยน')) {
+        return detail;
+      }
+
+      const countMatch = detail.match(/เปิด\s+(\d+)\s*\/\s*(\d+)\s*สิทธิ์/);
+      const countText = countMatch ? `: เปิด ${countMatch[1]}/${countMatch[2]} สิทธิ์` : '';
+      return `อัปเดตสิทธิ์${countText}`;
+    }
+    case 'UPLOAD_FILE': {
+      const sizeMatch = detail.match(/size=(\d+)\s*bytes/i);
+      const extMatch = detail.match(/ext=\.?([a-z0-9]+)/i) || log.target_label?.match(/\.([a-z0-9]+)$/i);
+      const fileType = extMatch ? extMatch[1].toUpperCase() : 'เสียง';
+      const sizeText = sizeMatch ? ` ขนาด ${formatBytes(Number(sizeMatch[1]))}` : '';
+      return `อัปโหลดไฟล์ ${fileType}${sizeText}`;
+    }
+    case 'ANALYZE_FILE':
+      return 'สั่งวิเคราะห์ไฟล์';
+    case 'REANALYZE_FILE':
+      return 'วิเคราะห์ไฟล์ใหม่';
+    case 'DELETE_FILE':
+      return 'ลบไฟล์';
+    case 'DELETE_FILE_BATCH': {
+      const deletedMatch = detail.match(/deleted=(\d+)/i);
+      return deletedMatch ? `ลบไฟล์ ${deletedMatch[1]} รายการ` : 'ลบไฟล์หลายรายการ';
+    }
+    default:
+      return detail ? shortenDetail(detail) : '-';
+  }
 }
 
 const ROLE_COLORS: Record<string, string> = {
@@ -468,17 +607,12 @@ export default function AdminManagementPage() {
     || nonAdminUsers[0];
 
   // Helper to retrieve permissions for a specific user
-  const getUserPermissions = useCallback((targetUser: AdminUser | undefined) => {
+  const getUserPermissions = useCallback((targetUser: AdminUser | undefined): Record<string, boolean> => {
     if (!targetUser) return {};
     const userPerms = permissionsByUser[targetUser.admin_user_id];
     if (userPerms) return userPerms;
 
-    // Default by role
-    const defaults: Record<string, boolean> = {};
-    ALL_PERMISSIONS.forEach((p) => {
-      defaults[p.id] = targetUser.role === 'STAFF' ? p.defaultStaff : p.defaultViewer;
-    });
-    return defaults;
+    return getDefaultPermissions(targetUser);
   }, [permissionsByUser]);
 
   const currentTargetPermissions = getUserPermissions(selectedTargetUser);
@@ -533,6 +667,10 @@ export default function AdminManagementPage() {
   const handleSavePermissions = async () => {
     if (!selectedTargetUser) return;
     try {
+      const savedPermissionsByUser = readSavedPermissionsByUser();
+      const previousPerms = savedPermissionsByUser[selectedTargetUser.admin_user_id]
+        || getDefaultPermissions(selectedTargetUser);
+
       localStorage.setItem('fontai_user_permissions', JSON.stringify(permissionsByUser));
       setIsDirty(false);
       setSaveSuccessMsg(`บันทึกการตั้งค่าสิทธิ์สำหรับคุณ "${selectedTargetUser.full_name}" (@${selectedTargetUser.username}) เรียบร้อยแล้ว!`);
@@ -541,35 +679,7 @@ export default function AdminManagementPage() {
       // Log activity to backend
       if (user) {
         const currentPerms = getUserPermissions(selectedTargetUser);
-        const allowedModules: string[] = [];
-        const blockedModules: string[] = [];
-
-        PERMISSION_GROUPS.forEach((group) => {
-          const groupAllowed = group.permissions.filter((p) => currentPerms[p.id]);
-          const groupBlocked = group.permissions.filter((p) => !currentPerms[p.id]);
-          const shortModuleName = group.moduleName.replace(/\s*\([^)]*\)/g, '').trim();
-
-          if (groupAllowed.length > 0) {
-            allowedModules.push(`${shortModuleName} (${groupAllowed.map((p) => p.title).join(', ')})`);
-          }
-          if (groupBlocked.length > 0) {
-            blockedModules.push(`${shortModuleName} (${groupBlocked.map((p) => p.title).join(', ')})`);
-          }
-        });
-
-        const totalPerms = ALL_PERMISSIONS.length;
-        const allowedCount = ALL_PERMISSIONS.filter((p) => currentPerms[p.id]).length;
-
-        const detailLines: string[] = [];
-        detailLines.push(`กำหนดสิทธิ์ให้ ${selectedTargetUser.full_name} (@${selectedTargetUser.username}) [เปิด ${allowedCount}/${totalPerms} สิทธิ์]`);
-        if (allowedModules.length > 0) {
-          detailLines.push(`✅ อนุญาต: ${allowedModules.join(' · ')}`);
-        }
-        if (blockedModules.length > 0) {
-          detailLines.push(`❌ ปิดกั้น: ${blockedModules.join(' · ')}`);
-        }
-
-        const fullDetail = detailLines.join('\n');
+        const fullDetail = buildPermissionChangeDetail(selectedTargetUser, previousPerms, currentPerms);
 
         await fetch(`${API_BASE}/api/v1/admin/logs`, {
           method: 'POST',
@@ -909,7 +1019,15 @@ export default function AdminManagementPage() {
 
               <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full min-w-[1180px] table-fixed">
+                    <colgroup>
+                      <col className="w-[160px]" />
+                      <col className="w-[160px]" />
+                      <col className="w-[240px]" />
+                      <col className="w-[360px]" />
+                      <col className="w-[250px]" />
+                      <col className="w-[130px]" />
+                    </colgroup>
                     <thead className="bg-slate-50 dark:bg-slate-700/30 border-b border-slate-200 dark:border-slate-700">
                       <tr>
                         <th className="px-4 py-3 text-left text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Time</th>
@@ -926,32 +1044,38 @@ export default function AdminManagementPage() {
                       ) : logs.length === 0 ? (
                         <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400 text-sm">ไม่พบ logs</td></tr>
                       ) : (
-                        logs.map((log) => (
+                        logs.map((log) => {
+                          const detailText = formatLogDetail(log);
+
+                          return (
                           <tr key={log.log_id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                            <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap">
+                            <td className="px-4 py-3 align-top text-xs text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap">
                               {log.created_at}
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-4 py-3 align-top">
                               <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{log.actor_username}</div>
                               <div className="text-[10px] text-slate-400 uppercase tracking-wider">{log.actor_role}</div>
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-4 py-3 align-top">
                               <span className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded border ${actionBadgeClass(log.action)}`}>
                                 {log.action}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                            <td className="px-4 py-3 align-top text-sm text-slate-600 dark:text-slate-300 break-words">
                               {log.target_label || (log.target_id ? `#${log.target_id}` : '-')}
                               {log.target_type && (
                                 <div className="text-[10px] text-slate-400 mt-0.5">{log.target_type}</div>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-xs text-slate-600 dark:text-slate-300 max-w-md whitespace-pre-line leading-relaxed">
-                              {log.detail || '-'}
+                            <td className="px-4 py-3 align-top text-xs text-slate-600 dark:text-slate-300">
+                              <span className="block w-full whitespace-normal break-words leading-relaxed" title={detailText}>
+                                {detailText}
+                              </span>
                             </td>
-                            <td className="px-4 py-3 text-[10px] text-slate-400 font-mono">{log.ip_address || '-'}</td>
+                            <td className="px-4 py-3 align-top text-[10px] text-slate-400 font-mono whitespace-nowrap">{log.ip_address || '-'}</td>
                           </tr>
-                        ))
+                          );
+                        })
                       )}
                     </tbody>
                   </table>

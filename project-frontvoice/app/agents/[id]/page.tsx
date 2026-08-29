@@ -293,7 +293,7 @@ export default function AgentDetailPage() {
                 <p className="mt-1 text-xs">รายการจะปรากฏเมื่อ agent นี้รับสายและระบบวิเคราะห์เสร็จ</p>
               </div>
             ) : (
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-slate-100/60 dark:divide-white/10">
                 {calls.map((call) => {
                   const sb = sentimentBadge(call.sentiment);
                   const stb = statusBadge(call.status);

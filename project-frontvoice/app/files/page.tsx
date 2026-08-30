@@ -27,6 +27,7 @@ interface FileRecord {
   call_direction: string;
   created_at?: string;
   uploaded_at?: string;
+  problem_details?: string[];
 }
 
 // ใช้ดึง timestamp ของไฟล์เพื่อ sort รายการไฟล์จากใหม่ไปเก่า (ถูกเรียกใช้ที่บรรทัด 159)
@@ -47,6 +48,8 @@ export default function FilesPage() {
 function FilesPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const issueFilter = searchParams.get('issue') || '';
+  const topicFilter = searchParams.get('topic') || '';
   // เก็บรายการไฟล์เสียงที่แสดงในตาราง (อ่านค่า: บรรทัด 159, 178, 182, 238, 241, 296, 456, 632, 657, 666, 669, 726; อัปเดต: บรรทัด 160, 165)
   const [files, setFiles] = useState<FileRecord[]>([]);
   // เก็บสถานะโหลดรายการไฟล์ (อ่านค่า: บรรทัด 493, 650; อัปเดต: บรรทัด 143, 167)
@@ -54,7 +57,7 @@ function FilesPageInner() {
   // เก็บข้อความ error จากการโหลดรายการไฟล์ (อ่านค่า: บรรทัด 108, 109, 349, 351, 614, 618, 836, 840, 841; อัปเดต: บรรทัด 144, 164)
   const [error, setError] = useState<string | null>(null);
   // เก็บคำค้นหาจากช่อง search หรือ query string (อ่านค่า: บรรทัด 132, 150, 169, 484; อัปเดต: บรรทัด 135, 485)
-  const [search, setSearch] = useState(searchParams.get('topic') || searchParams.get('search') || '');
+  const [search, setSearch] = useState(issueFilter || topicFilter || searchParams.get('search') || '');
   // เก็บเลขหน้าปัจจุบันของ pagination (อ่านค่า: บรรทัด 40, 147, 169, 370, 372, 730, 731, 741, 750, 751; อัปเดต: บรรทัด 136, 224, 485, 518, 525, 530, 551, 559, 584, 592, 730, 739, 750)
   const [page, setPage] = useState(1);
   // เก็บจำนวนหน้าทั้งหมดของ pagination (อ่านค่า: บรรทัด 736, 750, 751; อัปเดต: บรรทัด 161)
@@ -129,9 +132,10 @@ function FilesPageInner() {
 
   // Effect: sync ค่า search จาก URL query เช่น topic/search เมื่อเข้าหน้าจาก Dashboard
   useEffect(() => {
+    const issue = searchParams.get('issue');
     const topic = searchParams.get('topic');
     const s = searchParams.get('search');
-    const incoming = topic || s;
+    const incoming = issue || topic || s;
     if (incoming) {
       setSearch(incoming);
       setPage(1);
@@ -148,7 +152,8 @@ function FilesPageInner() {
         page: page.toString(),
         per_page: perPage.toString(),
       });
-      if (search) params.set('search', search);
+      if (issueFilter && search === issueFilter) params.set('issue', issueFilter);
+      else if (search) params.set('search', search);
       if (filterBrand) params.set('brand', filterBrand);
       if (filterProduct) params.set('product', filterProduct);
       if (filterDateFrom) params.set('date_from', filterDateFrom);
@@ -167,7 +172,7 @@ function FilesPageInner() {
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [page, search, filterBrand, filterProduct, filterDateFrom, filterDateTo]);
+  }, [page, search, issueFilter, filterBrand, filterProduct, filterDateFrom, filterDateTo]);
 
   // Effect: โหลดรายการไฟล์ใหม่เมื่อ search, filter หรือ pagination เปลี่ยน
   useEffect(() => {
@@ -215,6 +220,12 @@ function FilesPageInner() {
   };
 
   const activeFilterCount = [filterBrand, filterProduct, filterDateFrom || filterDateTo].filter(Boolean).length;
+  const isTopicFilterActive = Boolean(topicFilter && search === topicFilter);
+
+  const getProblemLabel = (file: FileRecord) => {
+    const details = (file.problem_details || []).map((item) => item.trim()).filter(Boolean);
+    return details.join(' / ');
+  };
 
   // Handle: ล้าง filter ทั้งหมดและกลับไปหน้าแรก (ถูกเรียกใช้ที่บรรทัด 605)
   const clearAllFilters = () => {
@@ -620,7 +631,16 @@ function FilesPageInner() {
                   files.map((file) => (
                     <tr
                       key={file.file_id}
-                      onClick={() => { if (!selectMode) router.push(`/files/${file.file_id}`); else toggleSelect(file.file_id); }}
+                      onClick={() => {
+                        if (!selectMode) {
+                          const detailUrl = issueFilter && search === issueFilter
+                            ? `/files/${file.file_id}?issue=${encodeURIComponent(issueFilter)}`
+                            : `/files/${file.file_id}`;
+                          router.push(detailUrl);
+                        } else {
+                          toggleSelect(file.file_id);
+                        }
+                      }}
                       className={`hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer group ${selectedIds.has(file.file_id) ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}
                     >
                       {selectMode && (
@@ -635,7 +655,19 @@ function FilesPageInner() {
                         <div className="w-8 h-8 bg-slate-50 rounded flex items-center justify-center text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
                           <FileAudio size={16} />
                         </div>
-                        <span className="font-medium text-slate-800 dark:text-slate-100 text-sm truncate max-w-[220px]">{file.name}</span>
+                        <div className="min-w-0">
+                          <span className="block font-medium text-slate-800 dark:text-slate-100 text-sm truncate max-w-[220px]">{file.name}</span>
+                          {isTopicFilterActive && getProblemLabel(file) && (
+                            <span className="mt-1 block max-w-[320px] text-[11px] font-medium leading-snug text-slate-500 dark:text-slate-400">
+                              รายละเอียดจากไฟล์: {getProblemLabel(file)}
+                            </span>
+                          )}
+                          {issueFilter && search === issueFilter && (
+                            <span className="mt-1 inline-flex max-w-[220px] items-center rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
+                              <span className="truncate">ปัญหา: {issueFilter}</span>
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="p-4">
                         <span className={`px-3 py-1 rounded-full text-[11px] font-bold ${getSentimentStyle(file.sentiment)}`}>

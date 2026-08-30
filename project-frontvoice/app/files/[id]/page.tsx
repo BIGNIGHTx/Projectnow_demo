@@ -4,7 +4,7 @@ import Sidebar from '@/components/Sidebar';
 import PageHeader from '@/components/PageHeader';
 import { useAuth } from '@/components/AuthProvider';
 import { AudioWaveform, Sparkles, MessageCircle, Info, Lightbulb, RefreshCw, Trash2, ArrowLeft, Play, Pause, AlertCircle, Loader2, SkipBack, SkipForward, ExternalLink, Tag, ShieldCheck } from 'lucide-react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -43,6 +43,7 @@ interface AnalysisData {
   transcription: TranscriptionSegment[];
   key_insights: string;
   keywords: string[];
+  problem_details?: string[];
   created_at: string;
 }
 
@@ -61,7 +62,9 @@ export default function FileAnalysisDetail() {
   const router = useRouter();
   const { user } = useAuth();
   const params = useParams();
+  const searchParams = useSearchParams();
   const fileId = params.id as string;
+  const selectedIssue = searchParams.get('issue') || '';
 
   // เก็บข้อมูล metadata ของไฟล์เสียง (อ่านค่า: บรรทัด 111, 112, 135, 324, 363, 391, 408, 699, 711, 814, 816, 818, 822, 840, 841, 842; อัปเดต: บรรทัด 120, 159)
   const [fileData, setFileData] = useState<FileData | null>(null);
@@ -463,6 +466,14 @@ export default function FileAnalysisDetail() {
                   // รองรับทั้งกรณีที่ AI ส่งมาเป็น string ยาว หรือมี action_items แยก
                   const insightText = (analysis.key_insights || '').trim();
                   const actionItems = (analysis as any).action_items || [];
+                  const baseProblemDetails = analysis.problem_details?.length ? analysis.problem_details : analysis.keywords;
+                  const selectedIssueKey = selectedIssue.trim().toLowerCase();
+                  const problemDetails = selectedIssueKey
+                    ? [
+                        ...baseProblemDetails.filter((kw) => kw.trim().toLowerCase() === selectedIssueKey),
+                        ...baseProblemDetails.filter((kw) => kw.trim().toLowerCase() !== selectedIssueKey),
+                      ]
+                    : baseProblemDetails;
 
                   return (
                     <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-700">
@@ -499,21 +510,31 @@ export default function FileAnalysisDetail() {
                           )}
                         </div>
 
-                        {/* KEYWORDS */}
+                        {/* PROBLEM DETAILS */}
                         <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-700 rounded-xl p-4">
                           <div className="flex items-center gap-1.5 mb-2.5">
                             <Tag size={13} className="text-amber-500" />
-                            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Keywords</p>
+                            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Problem Details</p>
                           </div>
                           <div className="flex flex-wrap gap-1.5">
-                            {analysis.keywords && analysis.keywords.length > 0 ? (
-                              analysis.keywords.map((kw, i) => (
-                                <span key={i} className="px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-[11px] font-medium rounded-full">
-                                  {kw}
-                                </span>
-                              ))
+                            {problemDetails && problemDetails.length > 0 ? (
+                              problemDetails.map((kw, i) => {
+                                const isSelectedIssue = selectedIssueKey && kw.trim().toLowerCase() === selectedIssueKey;
+                                return (
+                                  <span
+                                    key={i}
+                                    className={`px-2.5 py-1 border text-[11px] font-medium rounded-full ${
+                                      isSelectedIssue
+                                        ? 'bg-blue-600 border-blue-600 text-white'
+                                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200'
+                                    }`}
+                                  >
+                                    {isSelectedIssue ? `ปัญหาที่เลือก: ${kw}` : kw}
+                                  </span>
+                                );
+                              })
                             ) : (
-                              <p className="text-[11px] text-slate-400 dark:text-slate-500">ไม่มี keywords</p>
+                              <p className="text-[11px] text-slate-400 dark:text-slate-500">ไม่มีรายละเอียดปัญหา</p>
                             )}
                           </div>
                         </div>

@@ -453,7 +453,7 @@ export default function DashboardPage() {
                     <div className="w-1.5 h-5 rounded-full bg-gradient-to-b from-purple-500 to-pink-600 shadow-sm"></div>
                     Topic Distribution
                   </h3>
-                  <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">กดหัวข้อเพื่อดูไฟล์ที่อยู่ในกลุ่มนั้น</p>
+                  <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">กดหัวข้อเพื่อดูรายละเอียดรายไฟล์</p>
                 </div>
                 <div className="shrink-0 rounded-full border border-purple-100 dark:border-purple-900/50 bg-purple-50 dark:bg-purple-900/20 px-3 py-1.5 text-xs font-bold text-purple-700 dark:text-purple-300">
                   {data?.topic_distribution.length || 0} Topics
@@ -501,7 +501,7 @@ export default function DashboardPage() {
                             suppressHydrationWarning
                             onClick={() => router.push(`/files?topic=${encodeURIComponent(seg.topic)}`)}
                             className="group w-full rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/60"
-                            title={`ดูไฟล์ที่มี topic: ${seg.topic}`}
+                            title={`เปิดไฟล์หัวข้อ: ${seg.topic}`}
                           >
                             <div className="flex items-center gap-2.5">
                               <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: seg.color }}></span>
@@ -526,12 +526,6 @@ export default function DashboardPage() {
                       })}
                     </div>
                   </div>
-
-                  <div className="mt-4 border-t border-slate-100 dark:border-slate-700 pt-3">
-                    <div className="flex items-center justify-center py-5 text-center text-xs font-medium text-slate-400 dark:text-slate-500">
-                      เลือกหัวข้อด้านบนเพื่อไปดูไฟล์ที่อยู่ในหัวข้อนั้น
-                    </div>
-                  </div>
                 </>
               ) : (
                 <div className="flex h-[260px] items-center justify-center text-sm text-slate-400 dark:text-slate-500">No Data</div>
@@ -539,23 +533,23 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Row 3: Keyword Frequency (Top 10) */}
-          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 md:p-8 shadow-[0_2px_15px_-3px_rgba(6,81,237,0.08)] border border-slate-100 dark:border-slate-700 mb-5"> {/* Keyword intelligence: แสดง keyword ที่เจอบ่อยและ keyword อันดับหนึ่ง */}
+          {/* Row 3: Problem Detail Frequency (Top 10) */}
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 md:p-8 shadow-[0_2px_15px_-3px_rgba(6,81,237,0.08)] border border-slate-100 dark:border-slate-700 mb-5"> {/* Problem detail intelligence: แสดงปัญหาย่อยที่เจอบ่อยและประเด็นอันดับหนึ่ง */}
             <div className="flex items-center gap-4 mb-8">
               <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-[0_4px_15px_-3px_rgba(6,81,237,0.1)] ring-1 ring-slate-100">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/iconkey.png" alt="Keyword Frequency" className="h-full w-full object-cover transition-transform duration-300 hover:scale-105" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Keyword Frequency (Top 10)</h3>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">แสดง 10 คำที่ถูกกล่าวถึงมากที่สุดในช่วงเวลาที่เลือก</p>
+                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Problem Detail Frequency (Top 10)</h3>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">แสดงปัญหาย่อยที่ถูกพูดถึงบ่อย ไม่รวมชื่อแบรนด์หรือหมวดสินค้า</p>
               </div>
             </div>
 
             <div className="flex flex-col lg:flex-row gap-10">
               <div className="flex-1 space-y-5 py-2">
                 {(data?.keyword_frequency || []).length === 0 ? (
-                  <p className={`text-xs ${S2} text-center py-8`}>ไม่มีข้อมูล keywords</p>
+                  <p className={`text-xs ${S2} text-center py-8`}>ไม่มีข้อมูลปัญหาย่อย</p>
                 ) : (
                   data!.keyword_frequency.map((kw, i) => (
                     <div key={kw.keyword} className="flex items-center gap-4">
@@ -590,12 +584,12 @@ export default function DashboardPage() {
 
                 {topKeyword ? (
                   <p className="text-[15px] font-medium text-slate-600 dark:text-slate-300 leading-[1.8] relative z-10">
-                    คำว่า <span className="font-bold text-[#4a85f6] text-[17px]">&quot;{topKeyword.keyword}&quot;</span><br />
-                    ถูกกล่าวถึงมากที่สุด<br />
+                    ประเด็น <span className="font-bold text-[#4a85f6] text-[17px]">&quot;{topKeyword.keyword}&quot;</span><br />
+                    พบมากที่สุด<br />
                     คิดเป็น <span className="font-bold text-[#4a85f6] text-xl">{topKeyword.percentage}%</span> ของทั้งหมด
                   </p>
                 ) : (
-                  <p className={`text-xs ${S2} relative z-10`}>ยังไม่มี keyword ที่บ่งชี้</p>
+                  <p className={`text-xs ${S2} relative z-10`}>ยังไม่มีปัญหาย่อยที่บ่งชี้</p>
                 )}
               </div>
             </div>

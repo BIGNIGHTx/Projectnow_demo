@@ -39,13 +39,35 @@ interface InsightsData {
 type Period = 'day' | 'month' | 'year' | 'all';
 type BrandView = 'volume' | 'issues';
 
-const TOPIC_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#EC4899', '#F97316'];
+const TOPIC_COLORS = ['#e91e63', '#4e6cef', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#EC4899', '#F97316'];
 const DONUT_RADIUS = 45;
 const DONUT_CIRCUMFERENCE = 2 * Math.PI * DONUT_RADIUS;
 const BRAND_COLORS = [
   { bar: '#F97316' }, { bar: '#3B82F6' }, { bar: '#10B981' },
   { bar: '#EC4899' }, { bar: '#8B5CF6' }, { bar: '#F59E0B' },
 ];
+
+function ProcessingSpinnerIcon() {
+  const bars = [1, 0.14, 0.24, 0.36, 0.48, 0.56, 0.64, 0.72, 0.8, 0.88, 0.94, 0.98];
+
+  return (
+    <svg className="h-9 w-9 text-slate-700 dark:text-slate-100" viewBox="0 0 36 36" aria-hidden="true">
+      {bars.map((opacity, index) => (
+        <rect
+          key={index}
+          x="16.5"
+          y="3"
+          width="3"
+          height="9.5"
+          rx="1.5"
+          fill="currentColor"
+          opacity={opacity}
+          transform={`rotate(${index * 30} 18 18)`}
+        />
+      ))}
+    </svg>
+  );
+}
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -340,20 +362,13 @@ export default function DashboardPage() {
           {/* Row 1: KPI Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"> {/* KPI cards: สรุปจำนวนไฟล์, QA, CSAT และ high risk */}
             {[
-              { label: 'Total',       value: kpi?.total_files || 0, icon: (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src="/total.png" alt="Total Files" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
-              ) },
-              { label: 'Analyzed',    value: kpi?.analyzed || 0,    icon: <CheckCircle2 size={30} strokeWidth={2} className="text-[#10B981] drop-shadow-[0_2px_8px_rgba(16,185,129,0.35)] transition-transform duration-500 group-hover:scale-110" /> },
-              { label: 'Processing',  value: kpi?.processing || 0,  icon: (
-                <div className="flex h-12 w-12 items-center justify-center rounded-[18px] border border-[#FFE8B8] bg-[#FFF8EA] text-[#F59E0B] shadow-[0_8px_22px_-14px_rgba(245,158,11,0.9)]">
-                  <RefreshCw size={25} strokeWidth={2.7} className="animate-spin [animation-duration:2.6s]" />
-                </div>
-              ) },
-              { label: 'Failed',      value: kpi?.failed || 0,      icon: <AlertTriangle size={30} strokeWidth={2} className="text-[#EF4444] drop-shadow-[0_2px_8px_rgba(239,68,68,0.35)] transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-12" /> },
+              { label: 'Total',       value: kpi?.total_files || 0, icon: <FileAudio size={28} strokeWidth={2.2} className="text-slate-700 dark:text-slate-100" /> },
+              { label: 'Analyzed',    value: kpi?.analyzed || 0,    icon: <CheckCircle2 size={28} strokeWidth={2.2} className="text-slate-700 dark:text-slate-100" /> },
+              { label: 'Processing',  value: kpi?.processing || 0,  icon: <ProcessingSpinnerIcon /> },
+              { label: 'Failed',      value: kpi?.failed || 0,      icon: <AlertTriangle size={28} strokeWidth={2.2} className="text-red-500" /> },
             ].map((card) => (
-              <div key={card.label} className="group bg-white dark:bg-slate-800 rounded-[24px] p-6 flex items-center gap-5 shadow-[0_2px_15px_-3px_rgba(6,81,237,0.06)] border border-slate-100/80 dark:border-slate-700 transition-all duration-300 hover:shadow-[0_10px_30px_-5px_rgba(6,81,237,0.12)] hover:-translate-y-1">
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-[20px] bg-white dark:bg-slate-900 shadow-[0_4px_20px_-3px_rgba(6,81,237,0.08)] ring-1 ring-slate-100/50 dark:ring-slate-700 transition-all duration-300 group-hover:shadow-[0_6px_25px_-2px_rgba(6,81,237,0.15)] group-hover:ring-blue-100/50">
+              <div key={card.label} className="bg-white dark:bg-slate-800 rounded-[24px] p-6 flex items-center gap-5 shadow-[0_2px_15px_-3px_rgba(6,81,237,0.06)] border border-slate-100/80 dark:border-slate-700">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-[20px] bg-white dark:bg-slate-900 shadow-[0_4px_20px_-3px_rgba(6,81,237,0.08)] ring-1 ring-slate-100/50 dark:ring-slate-700">
                   {card.icon}
                 </div>
                 <div>

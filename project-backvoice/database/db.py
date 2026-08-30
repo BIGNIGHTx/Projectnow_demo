@@ -6,10 +6,12 @@
 import sqlite3
 import json
 import os
+import re
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
 from contextlib import contextmanager
+from services.problem_details import extract_problem_details, normalize_detail_label
 
 # =============================================================================
 # CONFIG
@@ -408,8 +410,49 @@ def delete_audio_file(file_id: str) -> bool:
     return cursor.rowcount > 0
 
 
+def _build_file_search_terms(search: str) -> list[str]:
+    raw = (search or "").strip()
+    if not raw:
+        return []
+
+    search_aliases = {
+        "ตารางเวลาจัดส่ง": ["ตารางเวลา", "จัดส่ง"],
+        "ส่งล่าช้า": ["ล่าช้า"],
+        "ยังไม่ได้รับสินค้า": ["ยังไม่ได้รับ"],
+    }
+    for alias, alias_terms in search_aliases.items():
+        if alias in raw:
+            return alias_terms
+
+    issue_terms = [
+        "สปริง", "สปิง", "ที่นอน", "ฟูก", "หมอน", "โครงเตียง", "เตียง",
+        "หัก", "ยุบ", "ยวบ", "บุบ", "แตก", "ขาด", "ฉีก", "เสียงดัง",
+        "กลิ่นฉุน", "กลิ่น", "เหม็น", "ผื่นคัน", "เปื้อน", "สกปรก",
+        "ส่งล่าช้า", "ส่งช้า", "ล่าช้า", "ยังไม่ได้รับ", "วันรับสินค้า",
+        "ตารางเวลาจัดส่ง", "ตารางเวลา",
+    ]
+    terms = [term for term in issue_terms if term in raw]
+    if "กลิ่นฉุน" in terms and "กลิ่น" in terms:
+        terms.remove("กลิ่น")
+    if "ส่งล่าช้า" in terms and "ล่าช้า" in terms:
+        terms.remove("ล่าช้า")
+
+    if not terms:
+        terms = [part for part in re.split(r"[\s,;/|]+", raw) if part]
+
+    deduped: list[str] = []
+    seen = set()
+    for term in terms:
+        key = term.lower()
+        if key not in seen:
+            seen.add(key)
+            deduped.append(term)
+    return deduped or [raw]
+
+
 def list_audio_files(
     search: str = None,
+    issue: str = None,
     brand: str = None,
     product: str = None,
     date_from: str = None,
@@ -430,11 +473,13 @@ def list_audio_files(
                 f.file_id, f.original_filename, f.customer_phone, f.agent_id,
                 f.agent_name, f.call_direction, f.call_date, f.status,
                 f.created_at, f.updated_at,
-                a.sentiment, a.brand_names, a.product_category, a.intent,
+                a.sentiment, a.brand_names, a.product_category, a.sale_channel, a.intent,
+                a.keywords, a.summary_text, a.key_insights, a.deep_insight,
                 a.created_at as analysis_date
             FROM audio_files f
             LEFT JOIN (
-                SELECT file_id, sentiment, brand_names, product_category, intent, created_at,
+                SELECT file_id, sentiment, brand_names, product_category, sale_channel, intent,
+                       keywords, summary_text, key_insights, deep_insight, created_at,
                        ROW_NUMBER() OVER (PARTITION BY file_id ORDER BY created_at DESC) as rn
                 FROM audio_analyses
             ) a ON f.file_id = a.file_id AND a.rn = 1
@@ -442,16 +487,21 @@ def list_audio_files(
         """
         params = []
 
-        if search:
-            query += """ AND (
-                f.original_filename LIKE ?
-                OR f.customer_phone LIKE ?
-                OR f.agent_id LIKE ?
-                OR COALESCE(a.brand_names, '') LIKE ?
-                OR COALESCE(a.intent, '') LIKE ?
-            )"""
-            s = f"%{search}%"
-            params.extend([s, s, s, s, s])
+        if search and not issue:
+            searchable_fields = [
+                "f.original_filename",
+                "f.customer_phone",
+                "f.agent_id",
+                "COALESCE(a.brand_names, '')",
+                "COALESCE(a.intent, '')",
+                "COALESCE(a.keywords, '')",
+                "COALESCE(a.summary_text, '')",
+                "COALESCE(a.key_insights, '')",
+                "COALESCE(a.deep_insight, '')",
+            ]
+            for term in _build_file_search_terms(search):
+                query += " AND (" + " OR ".join(f"{field} LIKE ?" for field in searchable_fields) + ")"
+                params.extend([f"%{term}%"] * len(searchable_fields))
 
         if brand:
             query += " AND UPPER(COALESCE(a.brand_names,'')) LIKE UPPER(?)"
@@ -477,15 +527,25 @@ def list_audio_files(
             elif status.upper() == "FAILED":
                 query += " AND f.status = 'failed'"
 
-        # Count total
-        count_query = f"SELECT COUNT(*) as cnt FROM ({query})"
-        total = conn.execute(count_query, params).fetchone()["cnt"]
+        order_sql = " ORDER BY f.created_at DESC, COALESCE(f.call_date, f.created_at) DESC"
+        if issue:
+            issue_key = normalize_detail_label(issue)
+            all_rows = conn.execute(query + order_sql, params).fetchall()
+            filtered_rows = [
+                row for row in all_rows
+                if issue_key in {normalize_detail_label(detail) for detail in extract_problem_details(row, _parse_json)}
+            ]
+            total = len(filtered_rows)
+            offset = (page - 1) * per_page
+            rows = filtered_rows[offset:offset + per_page]
+        else:
+            # Count total
+            count_query = f"SELECT COUNT(*) as cnt FROM ({query})"
+            total = conn.execute(count_query, params).fetchone()["cnt"]
 
-        # Order + paginate
-        query += " ORDER BY f.created_at DESC, COALESCE(f.call_date, f.created_at) DESC LIMIT ? OFFSET ?"
-        params.extend([per_page, (page - 1) * per_page])
-
-        rows = conn.execute(query, params).fetchall()
+            # Order + paginate
+            paged_params = [*params, per_page, (page - 1) * per_page]
+            rows = conn.execute(query + order_sql + " LIMIT ? OFFSET ?", paged_params).fetchall()
 
     # Format results
     files = []
@@ -493,6 +553,7 @@ def list_audio_files(
         r = dict_from_row(row)
         brand_names = _parse_json(r.get("brand_names", "[]"))
         file_status = r.get("status", "processing")
+        problem_details = extract_problem_details(r, _parse_json)
 
         files.append({
             "file_id": r["file_id"],
@@ -509,6 +570,7 @@ def list_audio_files(
             "call_direction": r.get("call_direction", ""),
             "created_at": r.get("created_at", ""),
             "updated_at": r.get("updated_at", ""),
+            "problem_details": problem_details,
         })
 
     total_pages = max(1, (total + per_page - 1) // per_page)
@@ -938,6 +1000,7 @@ def _parse_json(value) -> list:
 def _format_analysis(r: dict) -> dict:
     """Format analysis row เป็น dict ที่ frontend ใช้ได้"""
     brand_names = _parse_json(r.get("brand_names", "[]"))
+    problem_details = extract_problem_details(r, _parse_json)
     # parse deep_insight (เป็น dict ไม่ใช่ list)
     deep_insight_raw = r.get("deep_insight", "{}") or "{}"
     try:
@@ -967,6 +1030,7 @@ def _format_analysis(r: dict) -> dict:
         "summary_points": _parse_json(r.get("summary_points", "[]")),
         "key_insights": r.get("key_insights", ""),
         "keywords": _parse_json(r.get("keywords", "[]")),
+        "problem_details": problem_details,
         "action_items": _parse_json(r.get("action_items", "[]")),
         "deep_insight": deep_insight if isinstance(deep_insight, dict) else {},
         "transcription": _parse_json(r.get("segments", "[]")),

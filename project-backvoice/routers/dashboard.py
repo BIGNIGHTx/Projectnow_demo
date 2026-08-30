@@ -30,6 +30,8 @@ import pandas as pd
 from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
 
+from services.problem_details import build_file_problem_label, extract_problem_details
+
 from database.db import (
     get_all_analyses,
     get_filtered_analysis,
@@ -119,7 +121,8 @@ async def get_dashboard_insights(
         FROM audio_files f
         LEFT JOIN (
             SELECT file_id, intent, sentiment, qa_score, csat_score,
-                   keywords, brand_names,
+                   keywords, brand_names, product_category, sale_channel,
+                   summary_text, key_insights, deep_insight,
                    ROW_NUMBER() OVER (PARTITION BY file_id ORDER BY created_at DESC) as rn
             FROM audio_analyses
         ) a ON f.file_id = a.file_id AND a.rn = 1
@@ -179,22 +182,54 @@ async def get_dashboard_insights(
             "percentage": round(r["cnt"] / topic_total * 100, 1) if topic_total else 0,
         } for r in topic_rows]
 
-        # === Keyword Frequency (Top 10) ===
-        kw_rows = conn.execute(f"""
-            SELECT a.keywords
-            {base_join} AND a.keywords IS NOT NULL AND a.keywords != '[]'
+        # === Problem Detail Frequency (Top 10) + details under each topic ===
+        detail_rows = conn.execute(f"""
+            SELECT
+                f.file_id,
+                f.original_filename,
+                a.intent,
+                a.keywords,
+                a.brand_names,
+                a.product_category,
+                a.sale_channel,
+                a.summary_text,
+                a.key_insights,
+                a.deep_insight
+            {base_join} AND a.intent IS NOT NULL AND a.intent != ''
         """, date_params).fetchall()
+
         kw_counter: Counter = Counter()
-        for r in kw_rows:
-            for kw in _parse_json(r["keywords"]):
-                if kw and kw.strip():
-                    kw_counter[kw.strip()] += 1
+        topic_detail_counters: dict[str, Counter] = defaultdict(Counter)
+        topic_files: dict[str, list[dict]] = defaultdict(list)
+        topic_counts = {r["topic"]: r["cnt"] for r in topic_rows}
+        for r in detail_rows:
+            details = extract_problem_details(r, _parse_json)
+            if r["intent"]:
+                topic_files[r["intent"]].append({
+                    "file_id": r["file_id"],
+                    "filename": r["original_filename"] or r["file_id"],
+                    "problem_details": details,
+                    "problem_label": build_file_problem_label(r, _parse_json),
+                })
+            for detail in details:
+                kw_counter[detail] += 1
+                if r["intent"]:
+                    topic_detail_counters[r["intent"]][detail] += 1
+
         kw_total = sum(kw_counter.values())
         top_keywords = [{
             "keyword": k,
             "count": c,
             "percentage": round(c / kw_total * 100, 1) if kw_total else 0,
         } for k, c in kw_counter.most_common(10)]
+        topic_details = {
+            topic: [{
+                "keyword": detail,
+                "count": cnt,
+                "percentage": round(cnt / max(topic_counts.get(topic, 0), 1) * 100, 1),
+            } for detail, cnt in counter.most_common(5)]
+            for topic, counter in topic_detail_counters.items()
+        }
 
         # === Brand Volume + Brand Issues ===
         brand_rows = conn.execute(f"""
@@ -271,6 +306,8 @@ async def get_dashboard_insights(
         "kpi": kpi,
         "sentiment_distribution": sentiments,
         "topic_distribution": topics,
+        "topic_details": topic_details,
+        "topic_files": dict(topic_files),
         "keyword_frequency": top_keywords,
         "brand_volume": brand_volume,
         "brand_issues": brand_issues,

@@ -115,6 +115,7 @@ def _parse_filename(filename: str) -> dict:
 @router.get("/list", summary="📋 ดูรายการไฟล์ทั้งหมด")
 async def list_files(
     search: Optional[str] = None,
+    issue: Optional[str] = None,
     brand: Optional[str] = None,
     product: Optional[str] = None,
     date_from: Optional[str] = None,
@@ -124,7 +125,7 @@ async def list_files(
     per_page: int = 10,
 ):
     return list_audio_files(
-        search=search, brand=brand, product=product,
+        search=search, issue=issue, brand=brand, product=product,
         date_from=date_from, date_to=date_to, status=status,
         page=page, per_page=per_page,
     )

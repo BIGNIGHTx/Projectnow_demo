@@ -116,13 +116,15 @@ def init_db():
                     (username, _hash(pwd), full_name, email, role),
                 )
                 print(f"   👤 Seeded user: {username} ({role})")
-            elif existing["role"] != role:
-                # ★ ถ้ามี user อยู่แล้วแต่ role ไม่ตรง → update ให้ตรง (รองรับ role-based)
+            else:
+                # Keep demo logins stable across deployed SQLite snapshots.
                 conn.execute(
-                    "UPDATE admin_users SET role = ? WHERE username = ?",
-                    (role, username),
+                    """UPDATE admin_users
+                       SET password_hash = ?, full_name = ?, email = ?, role = ?, is_active = 1
+                       WHERE username = ?""",
+                    (_hash(pwd), full_name, email, role, username),
                 )
-                print(f"   🔧 Updated role: {username} → {role}")
+                print(f"   🔧 Ensured demo user: {username} ({role})")
 
         # === Seed warranty data (อิงจาก DB จริงที่ผู้ใช้แนบมาเท่านั้น) ===
         _seed_warranty_data(conn)

@@ -1860,7 +1860,6 @@ async def run_typhoon_pipeline(
         on_step_complete: callback (optional)
     """
     from services.typhoon_service import transcribe_audio
-    from services.diarization_service import diarize_audio, merge_transcript_with_speakers
 
     pipeline_start = datetime.now()
     print(f"🚀 Typhoon Pipeline START: {file_id}")
@@ -1881,6 +1880,8 @@ async def run_typhoon_pipeline(
     # --- Step 2: pyannote Speaker Diarization ---
     print(f"  Step 2/3: pyannote (Speaker Diarization)...")
     try:
+        from services.diarization_service import diarize_audio, merge_transcript_with_speakers
+
         speaker_segments = await diarize_audio(audio_file_path, num_speakers=2)
 
         # Merge transcript + speakers

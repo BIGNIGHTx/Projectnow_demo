@@ -33,6 +33,11 @@ def _load_local_env() -> None:
 
 _load_local_env()
 
+
+def _split_env_csv(name: str) -> list[str]:
+    value = os.environ.get(name, "")
+    return [item.strip().rstrip("/") for item in value.split(",") if item.strip()]
+
 # --- Import Routers ทั้งหมด ---
 from routers.audio    import router as audio_router
 from routers.ai_task  import router as ai_task_router
@@ -66,7 +71,7 @@ app = FastAPI(
 # =============================================================================
 # CORS Configuration
 # =============================================================================
-ALLOWED_ORIGINS = [
+DEFAULT_ALLOWED_ORIGINS = [
     "http://localhost:3000",   # React CRA
     "http://localhost:5173",   # React Vite
     "http://localhost:5174",   # React Vite (สำรอง)
@@ -74,9 +79,17 @@ ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
 ]
 
+ALLOWED_ORIGINS = list(dict.fromkeys(
+    DEFAULT_ALLOWED_ORIGINS
+    + _split_env_csv("FRONTEND_URL")
+    + _split_env_csv("CORS_ALLOWED_ORIGINS")
+))
+ALLOWED_ORIGIN_REGEX = os.environ.get("CORS_ALLOWED_ORIGIN_REGEX") or None
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=ALLOWED_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -166,6 +179,15 @@ async def root():
         },
         "docs": "/docs",
         "redoc": "/redoc",
+    }
+
+
+@app.get("/health", tags=["🏠 System"], summary="Health check")
+async def health():
+    return {
+        "status": "ok",
+        "service": app.title,
+        "version": app.version,
     }
 
 

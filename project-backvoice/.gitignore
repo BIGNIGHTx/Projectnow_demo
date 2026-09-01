@@ -2,3 +2,15 @@
 .env
 .env.*
 !.env.example
+
+# Python runtime/cache
+__pycache__/
+*.py[cod]
+
+# Local SQLite sidecar files
+*.db-shm
+*.db-wal
+
+# Generated audio/export files
+storage/converted/
+storage/exports/

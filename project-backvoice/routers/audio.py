@@ -327,10 +327,22 @@ async def play_audio(file_id: str):
                 if not path.is_absolute():
                     path = Path(__file__).resolve().parent.parent / p
                 if path.exists():
+                    suffix = path.suffix.lower()
+                    mime_map = {
+                        ".wav": "audio/wav", ".mp3": "audio/mpeg",
+                        ".ogg": "audio/ogg", ".m4a": "audio/mp4",
+                        ".aac": "audio/aac", ".flac": "audio/flac",
+                        ".webm": "audio/webm",
+                    }
+                    media_type = mime_map.get(suffix, "audio/wav")
+                    original_name = audio.get("original_filename", path.name)
                     return FileResponse(
-                        path=str(path), media_type="audio/wav",
-                        filename=audio.get("original_filename", "audio.wav"),
-                        headers={"Accept-Ranges": "bytes"},
+                        path=str(path),
+                        media_type=media_type,
+                        headers={
+                            "Accept-Ranges": "bytes",
+                            "Content-Disposition": f"inline; filename=\"{original_name}\"",
+                        },
                     )
 
     raise HTTPException(status_code=404, detail=f"ไม่พบไฟล์ ID: {file_id}")
